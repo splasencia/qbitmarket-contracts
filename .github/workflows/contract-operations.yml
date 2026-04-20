@@ -58,7 +58,7 @@ jobs:
       VERIFICATION_CONTRACT: ${{ inputs.verificationContract }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Validate operation inputs
         env:
@@ -196,7 +196,7 @@ jobs:
 
       - name: Upload deployment state artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: contract-${{ inputs.environment }}-${{ inputs.operation }}-state
           if-no-files-found: warn
