@@ -279,13 +279,7 @@ function saveAddressToAddressBook(contractName, contractAddress, deployBlockNumb
   addressBook[contractName] = contractAddress;
 
   saveDeploymentAddressBook(CONTRACTS_DIR, addressBook);
-  const tfvarsOutputPath = writeTerraformContractsOutput(
-    CONTRACTS_DIR,
-    addressBook,
-    deployBlockNumber === undefined ? {} : { [contractName]: deployBlockNumber }
-  );
   console.log(`Saved ${contractName} address to ${addressBookPath}`);
-  console.log(`Updated Terraform contract export: ${tfvarsOutputPath}`);
 }
 
 function removeLegacyAddressBookEntries() {
@@ -306,9 +300,7 @@ function removeLegacyAddressBookEntries() {
 
   if (changed) {
     saveDeploymentAddressBook(CONTRACTS_DIR, addressBook);
-    const tfvarsOutputPath = writeTerraformContractsOutput(CONTRACTS_DIR, addressBook);
     console.log(`Removed legacy contract addresses from ${addressBookPath}`);
-    console.log(`Updated Terraform contract export: ${tfvarsOutputPath}`);
   }
 }
 
