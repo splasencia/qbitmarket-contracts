@@ -1,0 +1,35 @@
+# Deployment Pipeline
+#
+# This repository publishes the deployment code used to bundle, compile, deploy,
+# and describe verifiable contract releases.
+#
+# Public deployment path:
+# - `.github/workflows/contract-operations.yml`
+# - protected GitHub environments (`dev`, `preview`, `prd`)
+# - GitHub Actions secrets and variables as the deployment input surface
+#
+# Runtime model:
+# - bundle contracts with `deployment/scripts/bundle_contracts.cjs`
+# - compile with `solc`
+# - deploy with `deployment/app/deploy.js`
+# - persist `address-book.yml` and `verification-manifest.json`
+#
+# Current upgradeable rollout:
+# - `MarketplacePrimaryImplementation`
+# - `MarketplacePrimaryProxyAdmin`
+# - `MarketplacePrimaryProxy`
+#
+# During the current rollout, legacy marketplace contracts may remain live while
+# proxy-based deployment artifacts are published separately.
+#
+# The workflow supports:
+# - `deploy`
+# - `describe_verification_manifest`
+#
+# The main public artifacts are:
+# - `deployment/state/<env>/address-book.yml`
+# - `deployment/state/<env>/verification-manifest.json`
+#
+# Private application repositories may consume those artifacts after deployment.
+# That consumer-specific environment synchronization is intentionally out of
+# scope for this public repository.

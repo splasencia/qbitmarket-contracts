@@ -1,0 +1,59 @@
+name: Contract CI
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/contracts-v3-ci.yml'
+      - '.github/workflows/contracts-v3-operations.yml'
+      - 'blockchain/**'
+      - 'deployment/**'
+      - 'docs/**'
+  push:
+    paths:
+      - '.github/workflows/contracts-v3-ci.yml'
+      - '.github/workflows/contracts-v3-operations.yml'
+      - 'blockchain/**'
+      - 'deployment/**'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: contract-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deployment-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            deployment/package-lock.json
+            deployment/app/package.json
+
+      - name: Validate deployment scripts syntax
+        run: |
+          node --check deployment/app/deploy.js
+          node --check deployment/app/statePaths.js
+          node --check deployment/app/describe_verification.js
+          node --check deployment/scripts/bundle_contracts.cjs
+          bash -n deployment/entrypoint.sh
+          bash -n deployment/scripts/bundle_contracts.sh
+
+      - name: Build deployment image
+        run: docker build -t qbitmarket-contract-deployment-ci ./deployment
+
+      - name: Upload public docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-docs
+          path: |
+            docs/contract-architecture.md
+            docs/publication-model.md
+            docs/public-notes.md
