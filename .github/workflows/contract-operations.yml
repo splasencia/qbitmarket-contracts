@@ -62,9 +62,9 @@ jobs:
 
       - name: Validate operation inputs
         env:
-          DEPLOYER_ADDRESS: ${{ secrets.DEPLOYER_ADDRESS }}
+          DEPLOYER_ADDRESS: ${{ vars.DEPLOYER_ADDRESS }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          RPC_URL: ${{ secrets.RPC_URL }}
+          RPC_URL: ${{ vars.RPC_URL }}
         run: |
           set -eu
 
@@ -92,15 +92,15 @@ jobs:
       - name: Prepare deployment environment file
         id: prepare-env
         env:
-          DEPLOYER_ADDRESS: ${{ secrets.DEPLOYER_ADDRESS }}
+          DEPLOYER_ADDRESS: ${{ vars.DEPLOYER_ADDRESS }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          RPC_URL: ${{ secrets.RPC_URL }}
-          MARKETPLACE_OWNER_ADDRESS: ${{ secrets.MARKETPLACE_OWNER_ADDRESS }}
-          MARKETPLACE_V2_OWNER_ADDRESS: ${{ secrets.MARKETPLACE_V2_OWNER_ADDRESS }}
-          FACTORY_OWNER_ADDRESS: ${{ secrets.FACTORY_OWNER_ADDRESS }}
-          FEE_RECIPIENT_ADDRESS: ${{ secrets.FEE_RECIPIENT_ADDRESS }}
-          MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS: ${{ secrets.MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS }}
-          MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS: ${{ secrets.MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS }}
+          RPC_URL: ${{ vars.RPC_URL }}
+          MARKETPLACE_OWNER_ADDRESS: ${{ vars.MARKETPLACE_OWNER_ADDRESS }}
+          MARKETPLACE_V2_OWNER_ADDRESS: ${{ vars.MARKETPLACE_V2_OWNER_ADDRESS }}
+          FACTORY_OWNER_ADDRESS: ${{ vars.FACTORY_OWNER_ADDRESS }}
+          FEE_RECIPIENT_ADDRESS: ${{ vars.FEE_RECIPIENT_ADDRESS }}
+          MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS: ${{ vars.MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS }}
+          MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS: ${{ vars.MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS }}
           MARKETPLACE_PLATFORM_FEE_BPS: ${{ vars.MARKETPLACE_PLATFORM_FEE_BPS }}
           MARKETPLACE_V2_PLATFORM_FEE_BPS: ${{ vars.MARKETPLACE_V2_PLATFORM_FEE_BPS }}
           MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS: ${{ vars.MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS }}
