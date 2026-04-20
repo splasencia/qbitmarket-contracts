@@ -3,15 +3,15 @@ name: Contract CI
 on:
   pull_request:
     paths:
-      - '.github/workflows/contracts-v3-ci.yml'
-      - '.github/workflows/contracts-v3-operations.yml'
+      - '.github/workflows/contract-ci.yml'
+      - '.github/workflows/contract-operations.yml'
       - 'blockchain/**'
       - 'deployment/**'
       - 'docs/**'
   push:
     paths:
-      - '.github/workflows/contracts-v3-ci.yml'
-      - '.github/workflows/contracts-v3-operations.yml'
+      - '.github/workflows/contract-ci.yml'
+      - '.github/workflows/contract-operations.yml'
       - 'blockchain/**'
       - 'deployment/**'
       - 'docs/**'
