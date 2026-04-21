@@ -48,12 +48,3 @@ jobs:
 
       - name: Build deployment image
         run: docker build -t qbitmarket-contract-deployment-ci ./deployment
-
-      - name: Upload public docs
-        uses: actions/upload-artifact@v7
-        with:
-          name: contract-docs
-          path: |
-            docs/contract-architecture.md
-            docs/publication-model.md
-            docs/public-notes.md
