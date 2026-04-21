@@ -113,7 +113,6 @@ jobs:
             docs/contracts-v3-audit-triage.md \
             docs/contracts-v3-slither-accepted-findings.json \
             docs/contracts-v3-operational-authority.md \
-            docs/contracts-v3-roadmap.md \
             docs/contracts-v3-publication-model.md
           do
             if [ -f "${doc}" ]; then

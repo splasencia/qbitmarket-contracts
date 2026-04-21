@@ -115,9 +115,10 @@ list_variables_via_api() {
   local environment="$2"
 
   gh api \
+    --paginate \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
-    "/repos/${repo}/environments/${environment}/variables" \
+    "/repos/${repo}/environments/${environment}/variables?per_page=100" \
     --jq '.variables[]? | [.name, (.updated_at // ""), (.created_at // "")] | @tsv'
 }
 
