@@ -109,11 +109,19 @@ jobs:
             --output "${AUDIT_EVIDENCE_DIR}/audit-evidence-manifest.json" \
             --summary-output "${AUDIT_EVIDENCE_DIR}/audit-evidence-summary.md"
 
-          cp docs/contracts-v3-audit-triage.md "${AUDIT_EVIDENCE_DIR}/contracts-v3-audit-triage.md"
-          cp docs/contracts-v3-slither-accepted-findings.json "${AUDIT_EVIDENCE_DIR}/contracts-v3-slither-accepted-findings.json"
-          cp docs/contracts-v3-operational-authority.md "${AUDIT_EVIDENCE_DIR}/contracts-v3-operational-authority.md"
-          cp docs/contracts-v3-roadmap.md "${AUDIT_EVIDENCE_DIR}/contracts-v3-roadmap.md"
-          cp docs/contracts-v3-publication-model.md "${AUDIT_EVIDENCE_DIR}/contracts-v3-publication-model.md"
+          for doc in \
+            docs/contracts-v3-audit-triage.md \
+            docs/contracts-v3-slither-accepted-findings.json \
+            docs/contracts-v3-operational-authority.md \
+            docs/contracts-v3-roadmap.md \
+            docs/contracts-v3-publication-model.md
+          do
+            if [ -f "${doc}" ]; then
+              cp "${doc}" "${AUDIT_EVIDENCE_DIR}/$(basename "${doc}")"
+            else
+              echo "Optional audit evidence document not present: ${doc}"
+            fi
+          done
 
       - name: Upload audit evidence
         if: always()

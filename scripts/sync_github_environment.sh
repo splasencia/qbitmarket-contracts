@@ -6,10 +6,14 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/sync_github_environment.sh --repo <owner/repo> --env <environment> --file <path/to/.env>
+  scripts/sync_github_environment.sh --repo <owner/repo> --env <environment> --list
 
 Description:
   Reads a dotenv-style file, keeps only the GitHub Actions environment inputs
   used by this repository, and syncs them to GitHub with `gh`.
+
+  Use --list to show existing GitHub Actions environment variables and secrets.
+  Secret values are never printed; only names and metadata are shown.
 
   Classification:
   - PRIVATE_KEY -> GitHub Actions environment secret
@@ -59,8 +63,169 @@ require_command() {
   fi
 }
 
+VARIABLE_KEYS=(
+  DEPLOYER_ADDRESS
+  RPC_URL
+  MARKETPLACE_OWNER_ADDRESS
+  MARKETPLACE_V2_OWNER_ADDRESS
+  FACTORY_OWNER_ADDRESS
+  FEE_RECIPIENT_ADDRESS
+  MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS
+  MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS
+  MARKETPLACE_PLATFORM_FEE_BPS
+  MARKETPLACE_V2_PLATFORM_FEE_BPS
+  MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS
+  EVM_VERSION
+  NETWORK_NAME
+)
+
+SECRET_KEYS=(
+  PRIVATE_KEY
+)
+
+REQUIRED_VARIABLE_KEYS=(
+  DEPLOYER_ADDRESS
+  RPC_URL
+  MARKETPLACE_OWNER_ADDRESS
+  MARKETPLACE_V2_OWNER_ADDRESS
+  FACTORY_OWNER_ADDRESS
+  FEE_RECIPIENT_ADDRESS
+  MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS
+  MARKETPLACE_PLATFORM_FEE_BPS
+  MARKETPLACE_V2_PLATFORM_FEE_BPS
+  EVM_VERSION
+)
+
+OPTIONAL_VARIABLE_KEYS=(
+  MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS
+  MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS
+  NETWORK_NAME
+)
+
+REQUIRED_SECRET_KEYS=(
+  PRIVATE_KEY
+)
+
 supports_gh_variable() {
   gh help variable >/dev/null 2>&1
+}
+
+list_variables_via_api() {
+  local repo="$1"
+  local environment="$2"
+
+  gh api \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "/repos/${repo}/environments/${environment}/variables" \
+    --jq '.variables[]? | [.name, (.updated_at // ""), (.created_at // "")] | @tsv'
+}
+
+list_secrets_via_api() {
+  local repo="$1"
+  local environment="$2"
+
+  gh api \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "/repos/${repo}/environments/${environment}/secrets" \
+    --jq '.secrets[]? | [.name, (.updated_at // ""), (.created_at // "")] | @tsv'
+}
+
+collect_first_column() {
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    printf '%s\n' "${line%%$'\t'*}"
+  done
+}
+
+has_key() {
+  local needle="$1"
+  shift
+
+  local candidate
+  for candidate in "$@"; do
+    if [[ "$candidate" == "$needle" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+list_environment_values() {
+  local repo="$1"
+  local environment="$2"
+  local variable_rows
+  local secret_rows
+
+  variable_rows="$(list_variables_via_api "$repo" "$environment")"
+  if ! secret_rows="$(gh secret list --repo "$repo" --env "$environment")"; then
+    secret_rows="$(list_secrets_via_api "$repo" "$environment")"
+  fi
+
+  mapfile -t existing_variable_keys < <(printf '%s\n' "$variable_rows" | collect_first_column)
+  mapfile -t existing_secret_keys < <(printf '%s\n' "$secret_rows" | collect_first_column)
+
+  echo "GitHub environment values for $repo / $environment"
+  echo
+  echo "Variables:"
+  if [[ -n "$variable_rows" ]]; then
+    printf '%s\n' "$variable_rows"
+  else
+    echo "  (none)"
+  fi
+
+  echo
+  echo "Secrets:"
+  if [[ -n "$secret_rows" ]]; then
+    printf '%s\n' "$secret_rows"
+  else
+    echo "  (none)"
+  fi
+
+  local missing_required=0
+
+  echo
+  echo "Required variables:"
+  for key in "${REQUIRED_VARIABLE_KEYS[@]}"; do
+    if has_key "$key" "${existing_variable_keys[@]}"; then
+      printf '  [ok] %s\n' "$key"
+    else
+      printf '  [missing] %s\n' "$key"
+      missing_required=1
+    fi
+  done
+
+  echo
+  echo "Required secrets:"
+  for key in "${REQUIRED_SECRET_KEYS[@]}"; do
+    if has_key "$key" "${existing_secret_keys[@]}"; then
+      printf '  [ok] %s\n' "$key"
+    else
+      printf '  [missing] %s\n' "$key"
+      missing_required=1
+    fi
+  done
+
+  echo
+  echo "Optional variables:"
+  for key in "${OPTIONAL_VARIABLE_KEYS[@]}"; do
+    if has_key "$key" "${existing_variable_keys[@]}"; then
+      printf '  [ok] %s\n' "$key"
+    else
+      printf '  [not set] %s\n' "$key"
+    fi
+  done
+
+  if [[ "$missing_required" -ne 0 ]]; then
+    echo
+    echo "Missing required GitHub environment values." >&2
+    return 1
+  fi
+
+  echo
+  echo "All required GitHub environment values are present."
 }
 
 set_variable_via_api() {
@@ -94,6 +259,7 @@ set_variable_via_api() {
 REPO=""
 ENVIRONMENT=""
 ENV_FILE=""
+LIST_EXISTING=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -109,6 +275,10 @@ while [[ $# -gt 0 ]]; do
       ENV_FILE="${2:-}"
       shift 2
       ;;
+    --list)
+      LIST_EXISTING=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -121,7 +291,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$REPO" || -z "$ENVIRONMENT" || -z "$ENV_FILE" ]]; then
+if [[ -z "$REPO" || -z "$ENVIRONMENT" ]]; then
+  usage >&2
+  exit 1
+fi
+
+require_command gh
+gh auth status >/dev/null
+
+if [[ "$LIST_EXISTING" -eq 1 ]]; then
+  list_environment_values "$REPO" "$ENVIRONMENT"
+  exit 0
+fi
+
+if [[ -z "$ENV_FILE" ]]; then
   usage >&2
   exit 1
 fi
@@ -130,29 +313,6 @@ if [[ ! -f "$ENV_FILE" ]]; then
   echo "Env file not found: $ENV_FILE" >&2
   exit 1
 fi
-
-require_command gh
-gh auth status >/dev/null
-
-VARIABLE_KEYS=(
-  DEPLOYER_ADDRESS
-  RPC_URL
-  MARKETPLACE_OWNER_ADDRESS
-  MARKETPLACE_V2_OWNER_ADDRESS
-  FACTORY_OWNER_ADDRESS
-  FEE_RECIPIENT_ADDRESS
-  MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS
-  MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS
-  MARKETPLACE_PLATFORM_FEE_BPS
-  MARKETPLACE_V2_PLATFORM_FEE_BPS
-  MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS
-  EVM_VERSION
-  NETWORK_NAME
-)
-
-SECRET_KEYS=(
-  PRIVATE_KEY
-)
 
 is_supported_key() {
   local key="$1"
