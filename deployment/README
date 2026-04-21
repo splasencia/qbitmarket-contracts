@@ -29,6 +29,10 @@
 # creates the manifest. The generated state is published as a workflow artifact;
 # it is not assumed to persist across independent workflow runs.
 #
+# Optional GitHub Actions variables:
+# - `NETWORK_NAME` overrides the provider-reported network name in the manifest,
+#   which is useful for custom networks that ethers reports as `unknown`.
+#
 # The main public artifacts are:
 # - `deployment/state/<env>/address-book.yml`
 # - `deployment/state/<env>/verification-manifest.json`

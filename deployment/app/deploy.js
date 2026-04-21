@@ -371,6 +371,7 @@ function normalizeVerificationManifest(existingManifest, deploymentTargets, netw
     existingManifest?.contracts && typeof existingManifest.contracts === "object" && Array.isArray(existingManifest.contracts) === false
       ? existingManifest.contracts
       : {};
+  const configuredNetworkName = String(process.env.NETWORK_NAME || "").trim();
 
   return {
     ...existingManifest,
@@ -379,7 +380,7 @@ function normalizeVerificationManifest(existingManifest, deploymentTargets, netw
     deploymentTargets: [...deploymentTargets],
     network: {
       chainId: network?.chainId ?? null,
-      name: network?.name ?? null,
+      name: configuredNetworkName || network?.name || null,
     },
     compiler: {
       solcOptimizeRunsDefault: DEFAULT_SOLC_OPTIMIZE_RUNS,
@@ -659,6 +660,7 @@ async function main() {
       upgradeabilityRole: "proxy_admin",
       postDeployConfiguration: {
         owner: proxyAdminOwnershipTransfer?.owner || wallet.address,
+        ownershipTransferRequired: Boolean(proxyAdminOwnershipTransfer),
         ownershipTransferTxHash: proxyAdminOwnershipTransfer?.txHash || null,
       },
     });

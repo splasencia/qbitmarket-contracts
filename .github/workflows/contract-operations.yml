@@ -86,6 +86,7 @@ jobs:
           MARKETPLACE_V2_PLATFORM_FEE_BPS: ${{ vars.MARKETPLACE_V2_PLATFORM_FEE_BPS }}
           MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS: ${{ vars.MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS }}
           EVM_VERSION: ${{ vars.EVM_VERSION }}
+          NETWORK_NAME: ${{ vars.NETWORK_NAME }}
         run: |
           set -eu
 
@@ -117,6 +118,7 @@ jobs:
           write_env "VERIFICATION_MANIFEST_PATH" "${state_dir}/verification-manifest.json"
           write_env "COLLECTION_FACTORY_MARKETPLACE_MODE" "${COLLECTION_FACTORY_MARKETPLACE_MODE}"
           write_env "EVM_VERSION" "${EVM_VERSION:-paris}"
+          write_env "NETWORK_NAME" "${NETWORK_NAME:-}"
           write_env "MARKETPLACE_PLATFORM_FEE_BPS" "${MARKETPLACE_PLATFORM_FEE_BPS:-250}"
           write_env "MARKETPLACE_V2_PLATFORM_FEE_BPS" "${MARKETPLACE_V2_PLATFORM_FEE_BPS:-250}"
           write_env "DEPLOYER_ADDRESS" "${DEPLOYER_ADDRESS:-}"
