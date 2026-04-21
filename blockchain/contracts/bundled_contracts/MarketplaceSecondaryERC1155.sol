@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-// File: MarketplaceV2.sol
+// File: MarketplaceSecondaryERC1155.sol
 
-// File: MarketplaceSecondaryAuctions.sol
+// File: MarketplaceSecondaryERC1155Auctions.sol
 
 // File: ../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
@@ -552,8 +552,8 @@ library SafeERC20 {
     }
 }
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
-// OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/IERC721.sol)
+// File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
+// OpenZeppelin Contracts (last updated v4.9.0) (token/ERC1155/IERC1155.sol)
 
 // File: ../node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
@@ -580,134 +580,121 @@ interface IERC165 {
 }
 
 /**
- * @dev Required interface of an ERC721 compliant contract.
+ * @dev Required interface of an ERC1155 compliant contract, as defined in the
+ * https://eips.ethereum.org/EIPS/eip-1155[EIP].
+ *
+ * _Available since v3.1._
  */
-interface IERC721 is IERC165 {
+interface IERC1155 is IERC165 {
     /**
-     * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
+     * @dev Emitted when `value` tokens of token type `id` are transferred from `from` to `to` by `operator`.
      */
-    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value);
 
     /**
-     * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.
+     * @dev Equivalent to multiple {TransferSingle} events, where `operator`, `from` and `to` are the same for all
+     * transfers.
      */
-    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
+    event TransferBatch(
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256[] ids,
+        uint256[] values
+    );
 
     /**
-     * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
+     * @dev Emitted when `account` grants or revokes permission to `operator` to transfer their tokens, according to
+     * `approved`.
      */
-    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    event ApprovalForAll(address indexed account, address indexed operator, bool approved);
 
     /**
-     * @dev Returns the number of tokens in ``owner``'s account.
+     * @dev Emitted when the URI for token type `id` changes to `value`, if it is a non-programmatic URI.
+     *
+     * If an {URI} event was emitted for `id`, the standard
+     * https://eips.ethereum.org/EIPS/eip-1155#metadata-extensions[guarantees] that `value` will equal the value
+     * returned by {IERC1155MetadataURI-uri}.
      */
-    function balanceOf(address owner) external view returns (uint256 balance);
+    event URI(string value, uint256 indexed id);
 
     /**
-     * @dev Returns the owner of the `tokenId` token.
+     * @dev Returns the amount of tokens of token type `id` owned by `account`.
      *
      * Requirements:
      *
-     * - `tokenId` must exist.
+     * - `account` cannot be the zero address.
      */
-    function ownerOf(uint256 tokenId) external view returns (address owner);
+    function balanceOf(address account, uint256 id) external view returns (uint256);
 
     /**
-     * @dev Safely transfers `tokenId` token from `from` to `to`.
+     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {balanceOf}.
      *
      * Requirements:
      *
-     * - `from` cannot be the zero address.
-     * - `to` cannot be the zero address.
-     * - `tokenId` token must exist and be owned by `from`.
-     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
-     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
-     *
-     * Emits a {Transfer} event.
+     * - `accounts` and `ids` must have the same length.
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
+    function balanceOfBatch(
+        address[] calldata accounts,
+        uint256[] calldata ids
+    ) external view returns (uint256[] memory);
 
     /**
-     * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients
-     * are aware of the ERC721 protocol to prevent tokens from being forever locked.
-     *
-     * Requirements:
-     *
-     * - `from` cannot be the zero address.
-     * - `to` cannot be the zero address.
-     * - `tokenId` token must exist and be owned by `from`.
-     * - If the caller is not `from`, it must have been allowed to move this token by either {approve} or {setApprovalForAll}.
-     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
-     *
-     * Emits a {Transfer} event.
-     */
-    function safeTransferFrom(address from, address to, uint256 tokenId) external;
-
-    /**
-     * @dev Transfers `tokenId` token from `from` to `to`.
-     *
-     * WARNING: Note that the caller is responsible to confirm that the recipient is capable of receiving ERC721
-     * or else they may be permanently lost. Usage of {safeTransferFrom} prevents loss, though the caller must
-     * understand this adds an external call which potentially creates a reentrancy vulnerability.
-     *
-     * Requirements:
-     *
-     * - `from` cannot be the zero address.
-     * - `to` cannot be the zero address.
-     * - `tokenId` token must be owned by `from`.
-     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(address from, address to, uint256 tokenId) external;
-
-    /**
-     * @dev Gives permission to `to` to transfer `tokenId` token to another account.
-     * The approval is cleared when the token is transferred.
-     *
-     * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
-     *
-     * Requirements:
-     *
-     * - The caller must own the token or be an approved operator.
-     * - `tokenId` must exist.
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address to, uint256 tokenId) external;
-
-    /**
-     * @dev Approve or remove `operator` as an operator for the caller.
-     * Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.
-     *
-     * Requirements:
-     *
-     * - The `operator` cannot be the caller.
+     * @dev Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`,
      *
      * Emits an {ApprovalForAll} event.
+     *
+     * Requirements:
+     *
+     * - `operator` cannot be the caller.
      */
     function setApprovalForAll(address operator, bool approved) external;
 
     /**
-     * @dev Returns the account approved for `tokenId` token.
+     * @dev Returns true if `operator` is approved to transfer ``account``'s tokens.
+     *
+     * See {setApprovalForAll}.
+     */
+    function isApprovedForAll(address account, address operator) external view returns (bool);
+
+    /**
+     * @dev Transfers `amount` tokens of token type `id` from `from` to `to`.
+     *
+     * Emits a {TransferSingle} event.
      *
      * Requirements:
      *
-     * - `tokenId` must exist.
+     * - `to` cannot be the zero address.
+     * - If the caller is not `from`, it must have been approved to spend ``from``'s tokens via {setApprovalForAll}.
+     * - `from` must have a balance of tokens of type `id` of at least `amount`.
+     * - If `to` refers to a smart contract, it must implement {IERC1155Receiver-onERC1155Received} and return the
+     * acceptance magic value.
      */
-    function getApproved(uint256 tokenId) external view returns (address operator);
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data) external;
 
     /**
-     * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.
+     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {safeTransferFrom}.
      *
-     * See {setApprovalForAll}
+     * Emits a {TransferBatch} event.
+     *
+     * Requirements:
+     *
+     * - `ids` and `amounts` must have the same length.
+     * - If `to` refers to a smart contract, it must implement {IERC1155Receiver-onERC1155BatchReceived} and return the
+     * acceptance magic value.
      */
-    function isApprovedForAll(address owner, address operator) external view returns (bool);
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external;
 }
 
-// File: MarketplaceSecondaryOffers.sol
+// File: MarketplaceSecondaryERC1155Offers.sol
 
-// File: MarketplaceSecondaryListings.sol
+// File: MarketplaceSecondaryERC1155Listings.sol
 
 // File: MarketplaceSecondaryPayments.sol
 
@@ -1020,122 +1007,6 @@ abstract contract ReentrancyGuard {
     }
 }
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
-// OpenZeppelin Contracts (last updated v4.9.0) (token/ERC1155/IERC1155.sol)
-
-/**
- * @dev Required interface of an ERC1155 compliant contract, as defined in the
- * https://eips.ethereum.org/EIPS/eip-1155[EIP].
- *
- * _Available since v3.1._
- */
-interface IERC1155 is IERC165 {
-    /**
-     * @dev Emitted when `value` tokens of token type `id` are transferred from `from` to `to` by `operator`.
-     */
-    event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value);
-
-    /**
-     * @dev Equivalent to multiple {TransferSingle} events, where `operator`, `from` and `to` are the same for all
-     * transfers.
-     */
-    event TransferBatch(
-        address indexed operator,
-        address indexed from,
-        address indexed to,
-        uint256[] ids,
-        uint256[] values
-    );
-
-    /**
-     * @dev Emitted when `account` grants or revokes permission to `operator` to transfer their tokens, according to
-     * `approved`.
-     */
-    event ApprovalForAll(address indexed account, address indexed operator, bool approved);
-
-    /**
-     * @dev Emitted when the URI for token type `id` changes to `value`, if it is a non-programmatic URI.
-     *
-     * If an {URI} event was emitted for `id`, the standard
-     * https://eips.ethereum.org/EIPS/eip-1155#metadata-extensions[guarantees] that `value` will equal the value
-     * returned by {IERC1155MetadataURI-uri}.
-     */
-    event URI(string value, uint256 indexed id);
-
-    /**
-     * @dev Returns the amount of tokens of token type `id` owned by `account`.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     */
-    function balanceOf(address account, uint256 id) external view returns (uint256);
-
-    /**
-     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {balanceOf}.
-     *
-     * Requirements:
-     *
-     * - `accounts` and `ids` must have the same length.
-     */
-    function balanceOfBatch(
-        address[] calldata accounts,
-        uint256[] calldata ids
-    ) external view returns (uint256[] memory);
-
-    /**
-     * @dev Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`,
-     *
-     * Emits an {ApprovalForAll} event.
-     *
-     * Requirements:
-     *
-     * - `operator` cannot be the caller.
-     */
-    function setApprovalForAll(address operator, bool approved) external;
-
-    /**
-     * @dev Returns true if `operator` is approved to transfer ``account``'s tokens.
-     *
-     * See {setApprovalForAll}.
-     */
-    function isApprovedForAll(address account, address operator) external view returns (bool);
-
-    /**
-     * @dev Transfers `amount` tokens of token type `id` from `from` to `to`.
-     *
-     * Emits a {TransferSingle} event.
-     *
-     * Requirements:
-     *
-     * - `to` cannot be the zero address.
-     * - If the caller is not `from`, it must have been approved to spend ``from``'s tokens via {setApprovalForAll}.
-     * - `from` must have a balance of tokens of type `id` of at least `amount`.
-     * - If `to` refers to a smart contract, it must implement {IERC1155Receiver-onERC1155Received} and return the
-     * acceptance magic value.
-     */
-    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data) external;
-
-    /**
-     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {safeTransferFrom}.
-     *
-     * Emits a {TransferBatch} event.
-     *
-     * Requirements:
-     *
-     * - `ids` and `amounts` must have the same length.
-     * - If `to` refers to a smart contract, it must implement {IERC1155Receiver-onERC1155BatchReceived} and return the
-     * acceptance magic value.
-     */
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        bytes calldata data
-    ) external;
-}
-
 // File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
 // OpenZeppelin Contracts (last updated v4.5.0) (token/ERC1155/IERC1155Receiver.sol)
 
@@ -1189,6 +1060,135 @@ interface IERC1155Receiver is IERC165 {
         uint256[] calldata values,
         bytes calldata data
     ) external returns (bytes4);
+}
+
+// File: ../node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
+// OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/IERC721.sol)
+
+/**
+ * @dev Required interface of an ERC721 compliant contract.
+ */
+interface IERC721 is IERC165 {
+    /**
+     * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
+     */
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+
+    /**
+     * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.
+     */
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
+
+    /**
+     * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
+     */
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+
+    /**
+     * @dev Returns the number of tokens in ``owner``'s account.
+     */
+    function balanceOf(address owner) external view returns (uint256 balance);
+
+    /**
+     * @dev Returns the owner of the `tokenId` token.
+     *
+     * Requirements:
+     *
+     * - `tokenId` must exist.
+     */
+    function ownerOf(uint256 tokenId) external view returns (address owner);
+
+    /**
+     * @dev Safely transfers `tokenId` token from `from` to `to`.
+     *
+     * Requirements:
+     *
+     * - `from` cannot be the zero address.
+     * - `to` cannot be the zero address.
+     * - `tokenId` token must exist and be owned by `from`.
+     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
+     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
+     *
+     * Emits a {Transfer} event.
+     */
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
+
+    /**
+     * @dev Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients
+     * are aware of the ERC721 protocol to prevent tokens from being forever locked.
+     *
+     * Requirements:
+     *
+     * - `from` cannot be the zero address.
+     * - `to` cannot be the zero address.
+     * - `tokenId` token must exist and be owned by `from`.
+     * - If the caller is not `from`, it must have been allowed to move this token by either {approve} or {setApprovalForAll}.
+     * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
+     *
+     * Emits a {Transfer} event.
+     */
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
+
+    /**
+     * @dev Transfers `tokenId` token from `from` to `to`.
+     *
+     * WARNING: Note that the caller is responsible to confirm that the recipient is capable of receiving ERC721
+     * or else they may be permanently lost. Usage of {safeTransferFrom} prevents loss, though the caller must
+     * understand this adds an external call which potentially creates a reentrancy vulnerability.
+     *
+     * Requirements:
+     *
+     * - `from` cannot be the zero address.
+     * - `to` cannot be the zero address.
+     * - `tokenId` token must be owned by `from`.
+     * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(address from, address to, uint256 tokenId) external;
+
+    /**
+     * @dev Gives permission to `to` to transfer `tokenId` token to another account.
+     * The approval is cleared when the token is transferred.
+     *
+     * Only a single account can be approved at a time, so approving the zero address clears previous approvals.
+     *
+     * Requirements:
+     *
+     * - The caller must own the token or be an approved operator.
+     * - `tokenId` must exist.
+     *
+     * Emits an {Approval} event.
+     */
+    function approve(address to, uint256 tokenId) external;
+
+    /**
+     * @dev Approve or remove `operator` as an operator for the caller.
+     * Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller.
+     *
+     * Requirements:
+     *
+     * - The `operator` cannot be the caller.
+     *
+     * Emits an {ApprovalForAll} event.
+     */
+    function setApprovalForAll(address operator, bool approved) external;
+
+    /**
+     * @dev Returns the account approved for `tokenId` token.
+     *
+     * Requirements:
+     *
+     * - `tokenId` must exist.
+     */
+    function getApproved(uint256 tokenId) external view returns (address operator);
+
+    /**
+     * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.
+     *
+     * See {setApprovalForAll}
+     */
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
 abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard, IERC1155Receiver {
@@ -1834,609 +1834,6 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         }
     }
 }
-
-abstract contract MarketplaceSecondaryListings is MarketplaceSecondaryPayments {
-    constructor(
-        address initialOwner_,
-        address initialFeeRecipient_,
-        uint96 initialPlatformFeeBps_
-    ) MarketplaceSecondaryPayments(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
-
-    function createListing(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 price
-    ) external whenNotPaused nonReentrant returns (uint256 listingId) {
-        return _createListing(collection, tokenId, paymentToken, price, 0);
-    }
-
-    function createListing(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 price,
-        uint256 durationSeconds
-    ) external whenNotPaused nonReentrant returns (uint256 listingId) {
-        return _createListing(collection, tokenId, paymentToken, price, durationSeconds);
-    }
-
-    function _createListing(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 price,
-        uint256 durationSeconds
-    ) internal returns (uint256 listingId) {
-        require(collection != address(0), "bad collection");
-        require(price > 0, "bad price");
-        require(_supportsInterface(collection, type(IERC721).interfaceId), "bad standard");
-        _requireSupportedPaymentToken(paymentToken);
-
-        address tokenOwner = _currentOwner(collection, tokenId);
-        require(tokenOwner == msg.sender, "not token owner");
-        require(_isApprovedSeller(msg.sender, collection, tokenId), "not approved");
-
-        uint256 existingListingId = activeListingIdByAsset[collection][tokenId];
-        if (existingListingId != 0) {
-            Listing storage existingListing = listings[existingListingId];
-
-            if (existingListing.active) {
-                if (
-                    _currentOwner(collection, tokenId) == existingListing.seller &&
-                    !_isExpired(existingListing.expiresAt)
-                ) {
-                    revert("listing exists");
-                }
-
-                _invalidateListing(existingListingId, existingListing);
-            } else {
-                activeListingIdByAsset[collection][tokenId] = 0;
-            }
-        }
-
-        listingId = nextListingId;
-        nextListingId = listingId + 1;
-
-        listings[listingId] = Listing({
-            seller: msg.sender,
-            collection: collection,
-            tokenId: tokenId,
-            paymentToken: paymentToken,
-            price: price,
-            active: true,
-            expiresAt: _resolveExpiresAt(durationSeconds)
-        });
-        activeListingIdByAsset[collection][tokenId] = listingId;
-
-        emit ListingCreated(listingId, msg.sender, collection, tokenId, paymentToken, price);
-    }
-
-    function updateListing(
-        uint256 listingId,
-        address paymentToken,
-        uint256 newPrice
-    ) external whenNotPaused nonReentrant {
-        _updateListing(listingId, paymentToken, newPrice, 0, true);
-    }
-
-    function updateListing(
-        uint256 listingId,
-        address paymentToken,
-        uint256 newPrice,
-        uint256 durationSeconds
-    ) external whenNotPaused nonReentrant {
-        _updateListing(listingId, paymentToken, newPrice, durationSeconds, false);
-    }
-
-    function _updateListing(
-        uint256 listingId,
-        address paymentToken,
-        uint256 newPrice,
-        uint256 durationSeconds,
-        bool preserveExistingExpiry
-    ) internal {
-        require(newPrice > 0, "bad price");
-        _requireSupportedPaymentToken(paymentToken);
-
-        Listing storage listing = listings[listingId];
-        require(listing.active, "listing off");
-        require(!_isExpired(listing.expiresAt), "listing old");
-        require(listing.seller == msg.sender, "not seller");
-        require(_currentOwner(listing.collection, listing.tokenId) == listing.seller, "seller lost token");
-        require(_isApprovedSeller(listing.seller, listing.collection, listing.tokenId), "not approved");
-
-        listing.paymentToken = paymentToken;
-        listing.price = newPrice;
-        listing.expiresAt = preserveExistingExpiry ? listing.expiresAt : _resolveExpiresAt(durationSeconds);
-
-        emit ListingUpdated(listingId, paymentToken, newPrice);
-    }
-
-    function cancelListing(uint256 listingId) external nonReentrant {
-        Listing storage listing = listings[listingId];
-        require(listing.active, "listing off");
-        require(listing.seller == msg.sender, "not seller");
-
-        _deactivateListing(listingId, listing);
-        emit ListingCancelled(listingId, msg.sender);
-    }
-
-    function buyListing(uint256 listingId) external payable whenNotPaused nonReentrant {
-        Listing storage listing = listings[listingId];
-        require(listing.active, "listing off");
-        require(listing.seller != msg.sender, "seller blocked");
-        require(!_isExpired(listing.expiresAt), "listing old");
-
-        address currentOwner = _currentOwner(listing.collection, listing.tokenId);
-        require(currentOwner == listing.seller, "seller lost token");
-        require(_isApprovedSeller(listing.seller, listing.collection, listing.tokenId), "not approved");
-
-        bool isNativePayment = listing.paymentToken == address(0);
-        if (isNativePayment) {
-            require(msg.value == listing.price, "bad payment");
-        } else {
-            require(msg.value == 0, "no native");
-        }
-
-        (
-            uint256 platformFeeAmount,
-            address royaltyRecipient_,
-            uint256 royaltyAmount,
-            uint256 sellerProceeds
-        ) = _quotePayout(listing.collection, listing.tokenId, listing.price, listing.paymentToken);
-
-        _deactivateListing(listingId, listing);
-
-        IERC721(listing.collection).safeTransferFrom(listing.seller, msg.sender, listing.tokenId);
-
-        if (isNativePayment) {
-            _payoutNative(listing.seller, sellerProceeds, platformFeeAmount, royaltyRecipient_, royaltyAmount);
-        } else {
-            _payoutErc20(
-                IERC20(listing.paymentToken),
-                msg.sender,
-                listing.seller,
-                sellerProceeds,
-                platformFeeAmount,
-                royaltyRecipient_,
-                royaltyAmount
-            );
-        }
-
-        emit ListingPurchased(
-            listingId,
-            msg.sender,
-            listing.collection,
-            listing.tokenId,
-            listing.seller,
-            listing.paymentToken,
-            listing.price
-        );
-    }
-
-    function quoteListingPayout(
-        uint256 listingId
-    )
-        external
-        view
-        returns (
-            address paymentToken,
-            uint256 salePrice,
-            uint256 platformFeeAmount,
-            address royaltyRecipient_,
-            uint256 royaltyAmount,
-            address seller,
-            uint256 sellerProceeds
-        )
-    {
-        Listing storage listing = listings[listingId];
-        require(listing.active, "listing off");
-        require(!_isExpired(listing.expiresAt), "listing old");
-
-        (
-            platformFeeAmount,
-            royaltyRecipient_,
-            royaltyAmount,
-            sellerProceeds
-        ) = _quotePayout(listing.collection, listing.tokenId, listing.price, listing.paymentToken);
-
-        paymentToken = listing.paymentToken;
-        salePrice = listing.price;
-        seller = listing.seller;
-    }
-}
-
-abstract contract MarketplaceSecondaryOffers is MarketplaceSecondaryListings {
-    using SafeERC20 for IERC20;
-
-    constructor(
-        address initialOwner_,
-        address initialFeeRecipient_,
-        uint96 initialPlatformFeeBps_
-    ) MarketplaceSecondaryListings(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
-
-    function createOffer(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 amount
-    ) external payable whenNotPaused nonReentrant returns (uint256 offerId) {
-        return _createOffer(collection, tokenId, paymentToken, amount, 0);
-    }
-
-    function createOffer(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 amount,
-        uint256 durationSeconds
-    ) external payable whenNotPaused nonReentrant returns (uint256 offerId) {
-        return _createOffer(collection, tokenId, paymentToken, amount, durationSeconds);
-    }
-
-    function _createOffer(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 amount,
-        uint256 durationSeconds
-    ) internal returns (uint256 offerId) {
-        require(collection != address(0), "bad collection");
-        require(amount > 0, "bad amount");
-        require(_supportsInterface(collection, type(IERC721).interfaceId), "bad standard");
-        _requireSupportedPaymentToken(paymentToken);
-
-        address tokenOwner = _currentOwner(collection, tokenId);
-        require(tokenOwner != address(0), "bad token");
-        require(tokenOwner != msg.sender, "owner blocked");
-        require(!_hasActiveAuction(collection, tokenId), "auction exists");
-
-        bool isNativePayment = paymentToken == address(0);
-        if (isNativePayment) {
-            require(msg.value == amount, "bad payment");
-        } else {
-            require(msg.value == 0, "no native");
-            IERC20(paymentToken).safeTransferFrom(msg.sender, address(this), amount);
-        }
-
-        offerId = nextOfferId;
-        nextOfferId = offerId + 1;
-
-        offers[offerId] = Offer({
-            bidder: msg.sender,
-            collection: collection,
-            tokenId: tokenId,
-            paymentToken: paymentToken,
-            amount: amount,
-            active: true,
-            expiresAt: _resolveExpiresAt(durationSeconds)
-        });
-
-        emit OfferCreated(offerId, msg.sender, collection, tokenId, paymentToken, amount);
-    }
-
-    function cancelOffer(uint256 offerId) external nonReentrant {
-        Offer storage offer = offers[offerId];
-        require(offer.active, "offer off");
-        require(offer.bidder == msg.sender, "not bidder");
-
-        _deactivateOffer(offer);
-        _refundOffer(offer);
-
-        emit OfferCancelled(offerId, msg.sender);
-    }
-
-    function acceptOffer(uint256 offerId) external whenNotPaused nonReentrant {
-        Offer storage offer = offers[offerId];
-        require(offer.active, "offer off");
-        require(!_isExpired(offer.expiresAt), "offer old");
-
-        address currentOwner = _currentOwner(offer.collection, offer.tokenId);
-        require(currentOwner == msg.sender, "not token owner");
-        require(msg.sender != offer.bidder, "bidder owns");
-        require(_isApprovedSeller(msg.sender, offer.collection, offer.tokenId), "not approved");
-
-        (
-            uint256 platformFeeAmount,
-            address royaltyRecipient_,
-            uint256 royaltyAmount,
-            uint256 sellerProceeds
-        ) = _quotePayout(offer.collection, offer.tokenId, offer.amount, offer.paymentToken);
-
-        _deactivateOffer(offer);
-
-        uint256 listingId = activeListingIdByAsset[offer.collection][offer.tokenId];
-        if (listingId != 0) {
-            Listing storage listing = listings[listingId];
-
-            if (listing.active) {
-                _invalidateListing(listingId, listing);
-            } else {
-                activeListingIdByAsset[offer.collection][offer.tokenId] = 0;
-            }
-        }
-
-        IERC721(offer.collection).safeTransferFrom(msg.sender, offer.bidder, offer.tokenId);
-
-        if (offer.paymentToken == address(0)) {
-            _payoutNative(msg.sender, sellerProceeds, platformFeeAmount, royaltyRecipient_, royaltyAmount);
-        } else {
-            _payoutEscrowedErc20(
-                IERC20(offer.paymentToken),
-                msg.sender,
-                sellerProceeds,
-                platformFeeAmount,
-                royaltyRecipient_,
-                royaltyAmount
-            );
-        }
-
-        emit OfferAccepted(
-            offerId,
-            msg.sender,
-            offer.bidder,
-            offer.collection,
-            offer.tokenId,
-            offer.paymentToken,
-            offer.amount
-        );
-    }
-
-    function quoteOfferPayout(
-        uint256 offerId
-    )
-        external
-        view
-        returns (
-            address paymentToken,
-            uint256 offerAmount,
-            uint256 platformFeeAmount,
-            address royaltyRecipient_,
-            uint256 royaltyAmount,
-            address bidder,
-            uint256 sellerProceeds
-        )
-    {
-        Offer storage offer = offers[offerId];
-        require(offer.active, "offer off");
-        require(!_isExpired(offer.expiresAt), "offer old");
-
-        (
-            platformFeeAmount,
-            royaltyRecipient_,
-            royaltyAmount,
-            sellerProceeds
-        ) = _quotePayout(offer.collection, offer.tokenId, offer.amount, offer.paymentToken);
-
-        paymentToken = offer.paymentToken;
-        offerAmount = offer.amount;
-        bidder = offer.bidder;
-    }
-}
-
-abstract contract MarketplaceSecondaryAuctions is MarketplaceSecondaryOffers {
-    using SafeERC20 for IERC20;
-
-    constructor(
-        address initialOwner_,
-        address initialFeeRecipient_,
-        uint96 initialPlatformFeeBps_
-    ) MarketplaceSecondaryOffers(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
-
-    function createAuction(
-        address collection,
-        uint256 tokenId,
-        address paymentToken,
-        uint256 reservePrice,
-        uint256 minBidIncrement,
-        uint256 durationSeconds
-    ) external whenNotPaused nonReentrant returns (uint256 auctionId) {
-        require(collection != address(0), "bad collection");
-        require(reservePrice > 0, "bad reserve");
-        require(minBidIncrement > 0, "bad increment");
-        require(durationSeconds > 0, "bad duration");
-        require(_supportsInterface(collection, type(IERC721).interfaceId), "bad standard");
-        require(!_hasActiveAuction(collection, tokenId), "auction exists");
-        _requireSupportedPaymentToken(paymentToken);
-
-        address tokenOwner = _currentOwner(collection, tokenId);
-        require(tokenOwner == msg.sender, "not token owner");
-        require(_isApprovedSeller(msg.sender, collection, tokenId), "not approved");
-
-        uint256 listingId = activeListingIdByAsset[collection][tokenId];
-        if (listingId != 0) {
-            Listing storage listing = listings[listingId];
-
-            if (listing.active) {
-                if (_currentOwner(collection, tokenId) == listing.seller) {
-                    _invalidateListing(listingId, listing);
-                } else {
-                    activeListingIdByAsset[collection][tokenId] = 0;
-                }
-            } else {
-                activeListingIdByAsset[collection][tokenId] = 0;
-            }
-        }
-
-        IERC721(collection).transferFrom(msg.sender, address(this), tokenId);
-
-        auctionId = nextAuctionId;
-        nextAuctionId = auctionId + 1;
-
-        auctions[auctionId] = Auction({
-            seller: msg.sender,
-            collection: collection,
-            tokenId: tokenId,
-            paymentToken: paymentToken,
-            reservePrice: reservePrice,
-            minBidIncrement: minBidIncrement,
-            highestBidder: address(0),
-            highestBidAmount: 0,
-            endTime: block.timestamp + durationSeconds,
-            active: true
-        });
-        activeAuctionIdByAsset[collection][tokenId] = auctionId;
-
-        emit AuctionCreated(
-            auctionId,
-            msg.sender,
-            collection,
-            tokenId,
-            paymentToken,
-            reservePrice,
-            minBidIncrement,
-            block.timestamp + durationSeconds
-        );
-    }
-
-    function placeAuctionBid(uint256 auctionId, uint256 bidAmount) external payable whenNotPaused nonReentrant {
-        Auction storage auction = auctions[auctionId];
-        require(auction.active, "auction off");
-        require(block.timestamp < auction.endTime, "auction over");
-        require(msg.sender != auction.seller, "seller blocked");
-
-        if (auction.highestBidAmount == 0) {
-            require(bidAmount >= auction.reservePrice, "below reserve");
-        } else {
-            require(
-                bidAmount >= auction.highestBidAmount + auction.minBidIncrement,
-                "bid too low"
-            );
-        }
-
-        if (auction.paymentToken == address(0)) {
-            require(msg.value == bidAmount, "bad payment");
-        } else {
-            require(msg.value == 0, "no native");
-            IERC20(auction.paymentToken).safeTransferFrom(msg.sender, address(this), bidAmount);
-        }
-
-        if (auction.highestBidder != address(0)) {
-            _refundEscrowedBid(
-                auction.paymentToken,
-                auction.highestBidder,
-                auction.highestBidAmount
-            );
-        }
-
-        auction.highestBidder = msg.sender;
-        auction.highestBidAmount = bidAmount;
-
-        emit AuctionBidPlaced(auctionId, msg.sender, auction.paymentToken, bidAmount);
-    }
-
-    function cancelAuction(uint256 auctionId) external nonReentrant {
-        Auction storage auction = auctions[auctionId];
-        require(auction.active, "auction off");
-        require(auction.seller == msg.sender, "not seller");
-        require(auction.highestBidder == address(0), "has bids");
-
-        _deactivateAuction(auctionId, auction);
-        IERC721(auction.collection).transferFrom(address(this), auction.seller, auction.tokenId);
-
-        emit AuctionCancelled(auctionId, msg.sender);
-    }
-
-    function settleAuction(uint256 auctionId) external nonReentrant {
-        Auction storage auction = auctions[auctionId];
-        require(auction.active, "auction off");
-        require(block.timestamp >= auction.endTime, "auction live");
-
-        _deactivateAuction(auctionId, auction);
-
-        if (auction.highestBidder == address(0)) {
-            IERC721(auction.collection).transferFrom(address(this), auction.seller, auction.tokenId);
-            emit AuctionSettled(
-                auctionId,
-                auction.seller,
-                address(0),
-                auction.collection,
-                auction.tokenId,
-                auction.paymentToken,
-                0
-            );
-            return;
-        }
-
-        (
-            uint256 platformFeeAmount,
-            address royaltyRecipient_,
-            uint256 royaltyAmount,
-            uint256 sellerProceeds
-        ) = _quotePayout(auction.collection, auction.tokenId, auction.highestBidAmount, auction.paymentToken);
-
-        IERC721(auction.collection).transferFrom(address(this), auction.highestBidder, auction.tokenId);
-
-        if (auction.paymentToken == address(0)) {
-            _payoutNative(
-                auction.seller,
-                sellerProceeds,
-                platformFeeAmount,
-                royaltyRecipient_,
-                royaltyAmount
-            );
-        } else {
-            _payoutEscrowedErc20(
-                IERC20(auction.paymentToken),
-                auction.seller,
-                sellerProceeds,
-                platformFeeAmount,
-                royaltyRecipient_,
-                royaltyAmount
-            );
-        }
-
-        emit AuctionSettled(
-            auctionId,
-            auction.seller,
-            auction.highestBidder,
-            auction.collection,
-            auction.tokenId,
-            auction.paymentToken,
-            auction.highestBidAmount
-        );
-    }
-
-    function quoteAuctionPayout(
-        uint256 auctionId
-    )
-        external
-        view
-        returns (
-            address paymentToken,
-            uint256 currentBidAmount,
-            uint256 platformFeeAmount,
-            address royaltyRecipient_,
-            uint256 royaltyAmount,
-            address highestBidder,
-            address seller,
-            uint256 sellerProceeds
-        )
-    {
-        Auction storage auction = auctions[auctionId];
-        require(auction.active, "auction off");
-        require(auction.highestBidder != address(0), "no bids");
-
-        (
-            platformFeeAmount,
-            royaltyRecipient_,
-            royaltyAmount,
-            sellerProceeds
-        ) = _quotePayout(auction.collection, auction.tokenId, auction.highestBidAmount, auction.paymentToken);
-
-        paymentToken = auction.paymentToken;
-        currentBidAmount = auction.highestBidAmount;
-        highestBidder = auction.highestBidder;
-        seller = auction.seller;
-    }
-}
-
-// File: MarketplaceSecondaryERC1155Auctions.sol
-
-// File: MarketplaceSecondaryERC1155Offers.sol
-
-// File: MarketplaceSecondaryERC1155Listings.sol
 
 abstract contract MarketplaceSecondaryERC1155Listings is MarketplaceSecondaryPayments {
     function createERC1155Listing(
@@ -3100,12 +2497,10 @@ abstract contract MarketplaceSecondaryERC1155Auctions is MarketplaceSecondaryERC
     }
 }
 
-contract MarketplaceV2 is MarketplaceSecondaryAuctions, MarketplaceSecondaryERC1155Auctions {
+contract MarketplaceSecondaryERC1155 is MarketplaceSecondaryERC1155Auctions {
     constructor(
         address initialOwner_,
         address initialFeeRecipient_,
         uint96 initialPlatformFeeBps_
-    )
-        MarketplaceSecondaryAuctions(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_)
-    {}
+    ) MarketplaceSecondaryPayments(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
 }
