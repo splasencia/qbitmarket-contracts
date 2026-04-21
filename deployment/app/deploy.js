@@ -87,6 +87,14 @@ const DEPLOYMENT_TARGET_SPECS = {
     files: ["MarketplaceV2.sol"],
     abiContracts: ["MarketplaceV2"],
   },
+  MarketplaceSecondaryERC721: {
+    files: ["MarketplaceSecondaryERC721.sol"],
+    abiContracts: ["MarketplaceSecondaryERC721"],
+  },
+  MarketplaceSecondaryERC1155: {
+    files: ["MarketplaceSecondaryERC1155.sol"],
+    abiContracts: ["MarketplaceSecondaryERC1155"],
+  },
   MarketplacePrimaryUpgradeable: {
     files: ["MarketplacePrimaryUpgradeable.sol"],
     abiContracts: ["MarketplacePrimaryUpgradeable"],
@@ -586,6 +594,146 @@ async function main() {
       }
 
       upsertVerificationManifestEntry(verificationManifest, "MarketplaceV2", {
+        postDeployConfiguration: {
+          siteNativeTokenAddress: marketplaceV2SiteNativeTokenAddress,
+          siteNativeTokenFeeBps: marketplaceV2SiteNativeTokenFeeBps,
+        },
+      });
+    }
+  }
+
+  if (deploymentTargets.includes("MarketplaceSecondaryERC721")) {
+    let contractData = compiledContracts["MarketplaceSecondaryERC721"];
+    if (!contractData) {
+      throw new Error("MarketplaceSecondaryERC721 contract was not found in compiled contracts.");
+    }
+
+    let constructorArgs = [
+      marketplaceV2Owner,
+      marketplaceV2FeeRecipient,
+      secondaryMarketplaceFeeBps,
+    ];
+
+    const deployedMarketplaceSecondaryERC721 = await deployContract(
+      wallet,
+      "MarketplaceSecondaryERC721",
+      contractData,
+      constructorArgs
+    );
+    const marketplaceSecondaryERC721Address = deployedMarketplaceSecondaryERC721.address;
+    upsertVerificationManifestEntry(verificationManifest, "MarketplaceSecondaryERC721", {
+      address: marketplaceSecondaryERC721Address,
+      deployBlockNumber: deployedMarketplaceSecondaryERC721.deployBlockNumber,
+      contractName: "MarketplaceSecondaryERC721",
+      verificationContract: buildVerificationContractId(contractData, "MarketplaceSecondaryERC721"),
+      constructorArgs,
+    });
+
+    if (hasMarketplaceV2SiteNativeTokenAddress || hasMarketplaceV2SiteNativeTokenFeeBps) {
+      const marketplaceSecondaryERC721Contract = new ethers.Contract(
+        marketplaceSecondaryERC721Address,
+        contractData.abi,
+        wallet
+      );
+
+      if (hasMarketplaceV2SiteNativeTokenAddress && hasMarketplaceV2SiteNativeTokenFeeBps) {
+        const tx = await marketplaceSecondaryERC721Contract.setSiteNativePaymentTokenConfig(
+          marketplaceV2SiteNativeTokenAddress,
+          marketplaceV2SiteNativeTokenFeeBps
+        );
+        await tx.wait();
+        console.log(
+          `Configured MarketplaceSecondaryERC721 site-native token and fee: token=${marketplaceV2SiteNativeTokenAddress}, feeBps=${marketplaceV2SiteNativeTokenFeeBps}`
+        );
+      } else if (hasMarketplaceV2SiteNativeTokenAddress) {
+        const tx = await marketplaceSecondaryERC721Contract.setSiteNativePaymentToken(
+          marketplaceV2SiteNativeTokenAddress
+        );
+        await tx.wait();
+        console.log(
+          `Configured MarketplaceSecondaryERC721 site-native token: token=${marketplaceV2SiteNativeTokenAddress}`
+        );
+      } else if (hasMarketplaceV2SiteNativeTokenFeeBps) {
+        const tx = await marketplaceSecondaryERC721Contract.setSiteNativePaymentTokenFeeBps(
+          marketplaceV2SiteNativeTokenFeeBps
+        );
+        await tx.wait();
+        console.log(
+          `Configured MarketplaceSecondaryERC721 site-native token fee: feeBps=${marketplaceV2SiteNativeTokenFeeBps}`
+        );
+      }
+
+      upsertVerificationManifestEntry(verificationManifest, "MarketplaceSecondaryERC721", {
+        postDeployConfiguration: {
+          siteNativeTokenAddress: marketplaceV2SiteNativeTokenAddress,
+          siteNativeTokenFeeBps: marketplaceV2SiteNativeTokenFeeBps,
+        },
+      });
+    }
+  }
+
+  if (deploymentTargets.includes("MarketplaceSecondaryERC1155")) {
+    let contractData = compiledContracts["MarketplaceSecondaryERC1155"];
+    if (!contractData) {
+      throw new Error("MarketplaceSecondaryERC1155 contract was not found in compiled contracts.");
+    }
+
+    let constructorArgs = [
+      marketplaceV2Owner,
+      marketplaceV2FeeRecipient,
+      secondaryMarketplaceFeeBps,
+    ];
+
+    const deployedMarketplaceSecondaryERC1155 = await deployContract(
+      wallet,
+      "MarketplaceSecondaryERC1155",
+      contractData,
+      constructorArgs
+    );
+    const marketplaceSecondaryERC1155Address = deployedMarketplaceSecondaryERC1155.address;
+    upsertVerificationManifestEntry(verificationManifest, "MarketplaceSecondaryERC1155", {
+      address: marketplaceSecondaryERC1155Address,
+      deployBlockNumber: deployedMarketplaceSecondaryERC1155.deployBlockNumber,
+      contractName: "MarketplaceSecondaryERC1155",
+      verificationContract: buildVerificationContractId(contractData, "MarketplaceSecondaryERC1155"),
+      constructorArgs,
+    });
+
+    if (hasMarketplaceV2SiteNativeTokenAddress || hasMarketplaceV2SiteNativeTokenFeeBps) {
+      const marketplaceSecondaryERC1155Contract = new ethers.Contract(
+        marketplaceSecondaryERC1155Address,
+        contractData.abi,
+        wallet
+      );
+
+      if (hasMarketplaceV2SiteNativeTokenAddress && hasMarketplaceV2SiteNativeTokenFeeBps) {
+        const tx = await marketplaceSecondaryERC1155Contract.setSiteNativePaymentTokenConfig(
+          marketplaceV2SiteNativeTokenAddress,
+          marketplaceV2SiteNativeTokenFeeBps
+        );
+        await tx.wait();
+        console.log(
+          `Configured MarketplaceSecondaryERC1155 site-native token and fee: token=${marketplaceV2SiteNativeTokenAddress}, feeBps=${marketplaceV2SiteNativeTokenFeeBps}`
+        );
+      } else if (hasMarketplaceV2SiteNativeTokenAddress) {
+        const tx = await marketplaceSecondaryERC1155Contract.setSiteNativePaymentToken(
+          marketplaceV2SiteNativeTokenAddress
+        );
+        await tx.wait();
+        console.log(
+          `Configured MarketplaceSecondaryERC1155 site-native token: token=${marketplaceV2SiteNativeTokenAddress}`
+        );
+      } else if (hasMarketplaceV2SiteNativeTokenFeeBps) {
+        const tx = await marketplaceSecondaryERC1155Contract.setSiteNativePaymentTokenFeeBps(
+          marketplaceV2SiteNativeTokenFeeBps
+        );
+        await tx.wait();
+        console.log(
+          `Configured MarketplaceSecondaryERC1155 site-native token fee: feeBps=${marketplaceV2SiteNativeTokenFeeBps}`
+        );
+      }
+
+      upsertVerificationManifestEntry(verificationManifest, "MarketplaceSecondaryERC1155", {
         postDeployConfiguration: {
           siteNativeTokenAddress: marketplaceV2SiteNativeTokenAddress,
           siteNativeTokenFeeBps: marketplaceV2SiteNativeTokenFeeBps,
