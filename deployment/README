@@ -24,7 +24,10 @@
 #
 # The workflow supports:
 # - `deploy`
-# - `describe_verification_manifest`
+#
+# The verification manifest summary is printed during the same deploy run that
+# creates the manifest. The generated state is published as a workflow artifact;
+# it is not assumed to persist across independent workflow runs.
 #
 # The main public artifacts are:
 # - `deployment/state/<env>/address-book.yml`

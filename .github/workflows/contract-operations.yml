@@ -12,14 +12,6 @@ on:
           - dev
           - preview
           - prd
-      operation:
-        description: Which contract operation to run
-        required: true
-        default: deploy
-        type: choice
-        options:
-          - deploy
-          - describe_verification_manifest
       deployOnly:
         description: Optional comma-separated DEPLOY_ONLY target list for deploy runs
         required: false
@@ -52,7 +44,6 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       ENVIRONMENT_NAME: ${{ inputs.environment }}
-      OPERATION: ${{ inputs.operation }}
       DEPLOY_ONLY_INPUT: ${{ inputs.deployOnly }}
       COLLECTION_FACTORY_MARKETPLACE_MODE: ${{ inputs.collectionFactoryMarketplaceMode }}
       VERIFICATION_CONTRACT: ${{ inputs.verificationContract }}
@@ -68,23 +59,13 @@ jobs:
         run: |
           set -eu
 
-          case "${OPERATION}" in
-            deploy)
-              for required_name in DEPLOYER_ADDRESS PRIVATE_KEY RPC_URL; do
-                required_value="$(printenv "${required_name}" || true)"
-                if [ -z "${required_value}" ]; then
-                  echo "Missing required environment secret: ${required_name}" >&2
-                  exit 1
-                fi
-              done
-              ;;
-            describe_verification_manifest)
-              ;;
-            *)
-              echo "Unsupported operation: ${OPERATION}" >&2
+          for required_name in DEPLOYER_ADDRESS PRIVATE_KEY RPC_URL; do
+            required_value="$(printenv "${required_name}" || true)"
+            if [ -z "${required_value}" ]; then
+              echo "Missing required environment value: ${required_name}" >&2
               exit 1
-              ;;
-          esac
+            fi
+          done
 
       - name: Build deployment image
         run: docker build -t qbitmarket-contract-deployment ./deployment
@@ -155,13 +136,12 @@ jobs:
 
           echo "env_file=${env_file}" >> "${GITHUB_OUTPUT}"
 
-      - name: Run requested contract operation
+      - name: Run contract deployment
         run: |
           set -eu
 
           docker run --rm \
             --env-file "${{ steps.prepare-env.outputs.env_file }}" \
-            --env OPERATION="${OPERATION}" \
             --env VERIFICATION_CONTRACT="${VERIFICATION_CONTRACT}" \
             -v "${GITHUB_WORKSPACE}:/workspace" \
             -v "${GITHUB_WORKSPACE}/blockchain/contracts:/contracts" \
@@ -178,27 +158,16 @@ jobs:
                 fi
               }
 
-              case "${OPERATION}" in
-                deploy)
-                  /app/scripts/bundle_contracts.sh
-                  node /app/deploy.js
-                  describe_manifest
-                  ;;
-                describe_verification_manifest)
-                  describe_manifest
-                  ;;
-                *)
-                  echo "Unsupported operation: ${OPERATION}" >&2
-                  exit 1
-                  ;;
-              esac
+              /app/scripts/bundle_contracts.sh
+              node /app/deploy.js
+              describe_manifest
             '
 
       - name: Upload deployment state artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: contract-${{ inputs.environment }}-${{ inputs.operation }}-state
+          name: contract-${{ inputs.environment }}-deploy-state
           if-no-files-found: warn
           path: |
             deployment/state/${{ inputs.environment }}/address-book.yml
