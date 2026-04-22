@@ -33,6 +33,7 @@
 // CLI flags:
 //   --on-chain                 Enable on-chain bytecode comparison.
 //   --contract <alias>         Limit to a single contract alias from the manifest.
+//   --deployment-targets       Limit to aliases produced by manifest.deploymentTargets.
 //   --allow-missing-address    Do not fail when a contract has no address yet.
 //   --json                     Output the full result object as JSON.
 //   -h, --help                 Show usage.
@@ -87,6 +88,7 @@ function parseArgs(argv) {
   const opts = {
     onChain: false,
     contract: null,
+    deploymentTargets: false,
     allowMissingAddress: false,
     json: false,
   };
@@ -98,13 +100,15 @@ function parseArgs(argv) {
     } else if (arg === "--contract") {
       opts.contract = argv[i + 1] || null;
       i += 1;
+    } else if (arg === "--deployment-targets") {
+      opts.deploymentTargets = true;
     } else if (arg === "--allow-missing-address") {
       opts.allowMissingAddress = true;
     } else if (arg === "--json") {
       opts.json = true;
     } else if (arg === "--help" || arg === "-h") {
       console.log(
-        "Usage: CONTRACTS_DIR=... node scripts/verify_contract_bytecode.js [--on-chain] [--contract alias] [--allow-missing-address] [--json]"
+        "Usage: CONTRACTS_DIR=... node scripts/verify_contract_bytecode.js [--on-chain] [--contract alias] [--deployment-targets] [--allow-missing-address] [--json]"
       );
       process.exit(0);
     } else {
@@ -114,6 +118,20 @@ function parseArgs(argv) {
 
   return opts;
 }
+
+const DEPLOYMENT_TARGET_ALIAS_MAP = {
+  MarketplacePrimaryUpgradeable: [
+    "MarketplacePrimaryImplementation",
+    "MarketplacePrimaryProxyAdmin",
+    "MarketplacePrimaryProxy",
+  ],
+};
+
+const SOURCE_DRIFT_HINT_ALIASES = new Set([
+  "ERC721CollectionDeployer",
+  "ERC1155CollectionDeployer",
+  "PaymentTokenFactory",
+]);
 
 // ---------------------------------------------------------------------------
 // State / manifest path resolution (mirrors deployment/app/statePaths.js)
@@ -290,6 +308,24 @@ function sha256Hex(hex) {
   return crypto.createHash("sha256").update(Buffer.from(hex, "hex")).digest("hex");
 }
 
+function aliasesForDeploymentTargets(manifest, contracts) {
+  const targets = Array.isArray(manifest.deploymentTargets)
+    ? manifest.deploymentTargets
+    : [];
+  const aliases = [];
+
+  for (const target of targets) {
+    const mappedAliases = DEPLOYMENT_TARGET_ALIAS_MAP[target] || [target];
+    for (const alias of mappedAliases) {
+      if (contracts[alias] && !aliases.includes(alias)) {
+        aliases.push(alias);
+      }
+    }
+  }
+
+  return aliases;
+}
+
 // ---------------------------------------------------------------------------
 // JSON-RPC: eth_getCode
 // ---------------------------------------------------------------------------
@@ -388,13 +424,22 @@ async function main() {
 
   const aliases = opts.contract
     ? [opts.contract]
-    : Object.keys(contracts);
+    : opts.deploymentTargets
+      ? aliasesForDeploymentTargets(manifest, contracts)
+      : Object.keys(contracts);
 
   const invalidAlias = opts.contract && !contracts[opts.contract];
   if (invalidAlias) {
     throw new Error(
       `Contract alias not found in manifest: ${opts.contract}\n` +
         `Available aliases: ${Object.keys(contracts).join(", ")}`
+    );
+  }
+
+  if (opts.deploymentTargets && aliases.length === 0) {
+    throw new Error(
+      "No manifest contract aliases match deploymentTargets. " +
+        "Run without --deployment-targets to verify all manifest entries."
     );
   }
 
@@ -405,6 +450,9 @@ async function main() {
       console.log(`Network chainId: ${manifest.network.chainId}`);
     }
     console.log(`Mode: ${opts.onChain ? "on-chain" : "local"}`);
+    if (opts.deploymentTargets) {
+      console.log(`Scope: deploymentTargets (${aliases.join(", ")})`);
+    }
     console.log("");
   }
 
@@ -605,6 +653,15 @@ async function main() {
 
       if (result.error) {
         console.log(`       error: ${result.error}`);
+        if (
+          result.error === "Normalized runtime bytecodes do not match." &&
+          SOURCE_DRIFT_HINT_ALIASES.has(alias)
+        ) {
+          console.log(
+            "       hint: this factory/deployer embeds child contract creation bytecode; " +
+              "a mismatch usually means the on-chain factory was deployed from older child source."
+          );
+        }
       }
 
       console.log("");

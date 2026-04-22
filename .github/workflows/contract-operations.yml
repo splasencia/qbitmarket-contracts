@@ -223,14 +223,21 @@ jobs:
               }
 
               verify_bytecode() {
-                if [ "${1:-local}" = "on_chain" ] && [ -n "${VERIFICATION_CONTRACT:-}" ]; then
+                mode="${1:-local}"
+                scope="${2:-all}"
+                scope_args=""
+                if [ -z "${VERIFICATION_CONTRACT:-}" ] && [ "${scope}" = "deployment_targets" ]; then
+                  scope_args="--deployment-targets"
+                fi
+
+                if [ "${mode}" = "on_chain" ] && [ -n "${VERIFICATION_CONTRACT:-}" ]; then
                   node /workspace/scripts/verify_contract_bytecode.js --on-chain --contract "${VERIFICATION_CONTRACT}"
-                elif [ "${1:-local}" = "on_chain" ]; then
-                  node /workspace/scripts/verify_contract_bytecode.js --on-chain
+                elif [ "${mode}" = "on_chain" ]; then
+                  node /workspace/scripts/verify_contract_bytecode.js --on-chain ${scope_args}
                 elif [ -n "${VERIFICATION_CONTRACT:-}" ]; then
                   node /workspace/scripts/verify_contract_bytecode.js --contract "${VERIFICATION_CONTRACT}"
                 else
-                  node /workspace/scripts/verify_contract_bytecode.js
+                  node /workspace/scripts/verify_contract_bytecode.js ${scope_args}
                 fi
               }
 
@@ -239,7 +246,7 @@ jobs:
                   /app/scripts/bundle_contracts.sh
                   node /app/deploy.js
                   describe_manifest
-                  verify_bytecode on_chain
+                  verify_bytecode on_chain deployment_targets
                   ;;
                 describe_verification_manifest)
                   describe_manifest
