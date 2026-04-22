@@ -39,12 +39,17 @@ on:
         description: Optional verification manifest alias filter
         required: false
         type: string
+      deploymentStateRunId:
+        description: Optional prior deploy run ID to download deployment state artifacts for verification-only operations
+        required: false
+        type: string
 
 concurrency:
   group: contract-operations-${{ inputs.environment }}
   cancel-in-progress: false
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -58,6 +63,7 @@ jobs:
       DEPLOY_ONLY_INPUT: ${{ inputs.deployOnly }}
       COLLECTION_FACTORY_MARKETPLACE_MODE: ${{ inputs.collectionFactoryMarketplaceMode }}
       VERIFICATION_CONTRACT: ${{ inputs.verificationContract }}
+      DEPLOYMENT_STATE_RUN_ID: ${{ inputs.deploymentStateRunId }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -95,6 +101,29 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Download prior deployment state artifacts
+        if: ${{ inputs.operation != 'deploy' && inputs.deploymentStateRunId != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-${{ inputs.environment }}-deploy-state
+          path: deployment/state/${{ inputs.environment }}
+          run-id: ${{ inputs.deploymentStateRunId }}
+          github-token: ${{ github.token }}
+
+      - name: Validate deployment state artifacts
+        if: ${{ inputs.operation != 'deploy' }}
+        run: |
+          set -eu
+
+          manifest_path="deployment/state/${ENVIRONMENT_NAME}/verification-manifest.json"
+          if [ ! -f "${manifest_path}" ]; then
+            echo "Missing verification manifest: ${manifest_path}" >&2
+            echo "Standalone ${OPERATION} runs need deployment state from a previous deploy run." >&2
+            echo "Run the deploy operation first, then pass that workflow run ID as deploymentStateRunId." >&2
+            echo "Expected artifact name: contract-${ENVIRONMENT_NAME}-deploy-state" >&2
+            exit 1
+          fi
 
       - name: Build deployment image
         run: docker build -t qbitmarket-contract-deployment ./deployment

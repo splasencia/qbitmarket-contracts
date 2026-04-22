@@ -214,7 +214,10 @@ Before publishing or deploying from the public repository:
    environment.
 8. Run the workflow bytecode verification operation, or rely on the deployment
    run's built-in on-chain bytecode validation, before promoting the address
-   matrix.
+   matrix. For standalone verification-only workflow runs, pass the prior deploy
+   workflow run ID through `deploymentStateRunId` so the workflow can download
+   the `contract-<env>-deploy-state` artifact containing
+   `verification-manifest.json`.
 9. Download and retain the generated `address-book.yml` and
    `verification-manifest.json` artifacts.
 10. Use the generated state in the private monorepo for frontend/indexer env
