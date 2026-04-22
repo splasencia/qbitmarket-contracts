@@ -179,13 +179,12 @@ function getCompilerSettings(primaryContractName, compiler) {
 // Returns: { [contractName]: { binRuntime, immutableRefs } }
 // ---------------------------------------------------------------------------
 
-function compileBundledSource(sourcePath, settings) {
+function compileBundledSource(sourcePath, settings, sourceKey = path.basename(sourcePath)) {
   const { evmVersion, optimizeRuns, viaIr } = settings;
-  const sourceBasename = path.basename(sourcePath);
   const input = {
     language: "Solidity",
     sources: {
-      [sourceBasename]: {
+      [sourceKey]: {
         content: fs.readFileSync(sourcePath, "utf8"),
       },
     },
@@ -502,11 +501,11 @@ async function main() {
 
       // Compile
       const settings = getCompilerSettings(primaryContractName, compiler);
-      result.localCompile = { settings, sourcePath, contractClassName };
+      result.localCompile = { settings, sourcePath, sourceKey: sourceRef, contractClassName };
 
       let compiled;
       try {
-        compiled = compileBundledSource(sourcePath, settings);
+        compiled = compileBundledSource(sourcePath, settings, sourceRef);
       } catch (compileErr) {
         result.status = "fail";
         result.error = compileErr.message;
