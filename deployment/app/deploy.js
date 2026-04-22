@@ -376,6 +376,65 @@ function getExistingDeployedAddress(contractName) {
   return requireAddress(addressBook[contractName], `address-book.${contractName}`);
 }
 
+function hasAddressBookAddress(addressBook, contractName) {
+  const value = addressBook[contractName];
+  return typeof value === "string" && ethers.utils.isAddress(value);
+}
+
+function isDeploymentAliasProducedByTargets(deploymentTargets, deploymentAlias) {
+  if (deploymentTargets.includes(deploymentAlias)) {
+    return true;
+  }
+
+  if (
+    deploymentTargets.includes("MarketplacePrimaryUpgradeable") &&
+    [
+      "MarketplacePrimaryImplementation",
+      "MarketplacePrimaryProxyAdmin",
+      "MarketplacePrimaryProxy",
+    ].includes(deploymentAlias)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function validateDeployTargetDependencies(deploymentTargets, collectionFactoryMarketplaceMode) {
+  const addressBook = loadAddressBook();
+  const missingDependencies = [];
+
+  const requireAddressOrCurrentTarget = (contractName, reason) => {
+    if (
+      isDeploymentAliasProducedByTargets(deploymentTargets, contractName) ||
+      hasAddressBookAddress(addressBook, contractName)
+    ) {
+      return;
+    }
+
+    missingDependencies.push(`${contractName} (${reason})`);
+  };
+
+  if (deploymentTargets.includes("CollectionFactory")) {
+    if (collectionFactoryMarketplaceMode === "primary_proxy") {
+      requireAddressOrCurrentTarget("MarketplacePrimaryProxy", "CollectionFactory primary_proxy marketplace target");
+    } else {
+      requireAddressOrCurrentTarget("Marketplace", "CollectionFactory legacy marketplace target");
+    }
+
+    requireAddressOrCurrentTarget("ERC721CollectionDeployer", "CollectionFactory ERC-721 deployer");
+    requireAddressOrCurrentTarget("ERC1155CollectionDeployer", "CollectionFactory ERC-1155 deployer");
+  }
+
+  if (missingDependencies.length > 0) {
+    throw new Error(
+      "Missing deployment dependencies before deploying anything: " +
+        missingDependencies.join(", ") +
+        ". Include the dependencies in DEPLOY_ONLY or pass deploymentStateRunId for a prior deploy artifact."
+    );
+  }
+}
+
 function buildVerificationContractId(contractData, fallbackContractName) {
   if (contractData?.sourceName && fallbackContractName) {
     return `${contractData.sourceName}:${fallbackContractName}`;
@@ -415,6 +474,8 @@ function upsertVerificationManifestEntry(manifest, deploymentAlias, entry) {
     ...manifest.contracts[deploymentAlias],
     ...entry,
   });
+  const verificationManifestPath = saveDeploymentVerificationManifest(CONTRACTS_DIR, manifest);
+  console.log(`Updated verification manifest: ${verificationManifestPath}`);
 }
 
 async function deploySecondaryMarketplace({
@@ -579,6 +640,7 @@ async function main() {
     );
   }
   removeLegacyAddressBookEntries();
+  validateDeployTargetDependencies(deploymentTargets, collectionFactoryMarketplaceMode);
 
   let marketplaceAddress = null;
   let marketplacePrimaryProxyAddress = null;

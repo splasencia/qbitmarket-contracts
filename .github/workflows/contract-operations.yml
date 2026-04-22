@@ -40,7 +40,7 @@ on:
         required: false
         type: string
       deploymentStateRunId:
-        description: Optional prior deploy run ID to download deployment state artifacts for verification-only operations
+        description: Optional prior deploy run ID to download deployment state artifacts for partial deploy or verification operations
         required: false
         type: string
 
@@ -103,7 +103,7 @@ jobs:
           esac
 
       - name: Download prior deployment state artifacts
-        if: ${{ inputs.operation != 'deploy' && inputs.deploymentStateRunId != '' }}
+        if: ${{ inputs.deploymentStateRunId != '' }}
         uses: actions/download-artifact@v4
         with:
           name: contract-${{ inputs.environment }}-deploy-state
