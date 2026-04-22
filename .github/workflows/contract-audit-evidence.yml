@@ -1,0 +1,139 @@
+name: Contract Audit Evidence
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/contract-audit-evidence.yml'
+      - 'blockchain/contracts/**'
+      - 'blockchain/test/**'
+      - 'deployment/scripts/bundle_contracts.*'
+      - 'docs/audit-triage.md'
+      - 'docs/operational-authority.md'
+      - 'docs/publication-model.md'
+      - 'docs/slither-accepted-findings.json'
+      - 'scripts/run_mythril.sh'
+      - 'scripts/run_slither.sh'
+      - 'scripts/check_slither_triage.js'
+      - 'scripts/generate_audit_manifest.js'
+  push:
+    paths:
+      - '.github/workflows/contract-audit-evidence.yml'
+      - 'blockchain/contracts/**'
+      - 'blockchain/test/**'
+      - 'deployment/scripts/bundle_contracts.*'
+      - 'docs/audit-triage.md'
+      - 'docs/operational-authority.md'
+      - 'docs/publication-model.md'
+      - 'docs/slither-accepted-findings.json'
+      - 'scripts/run_mythril.sh'
+      - 'scripts/run_slither.sh'
+      - 'scripts/check_slither_triage.js'
+      - 'scripts/generate_audit_manifest.js'
+  workflow_dispatch:
+
+concurrency:
+  group: contract-audit-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      AUDIT_EVIDENCE_DIR: /tmp/qbitmarket-contract-audit-evidence
+      MYTHRIL_OUTPUT_DIR: /tmp/qbitmarket-contract-audit-evidence/mythril
+      SLITHER_OUTPUT_DIR: /tmp/qbitmarket-contract-audit-evidence/slither
+      MYTHRIL_DOCKER_IMAGE: mythril/myth
+      MYTHRIL_SKIP_COMPILE: '1'
+      PRIVATE_KEY: '0x1111111111111111111111111111111111111111111111111111111111111111'
+      PRIVATE_KEY_QAN: '0x1111111111111111111111111111111111111111111111111111111111111111'
+      TMPDIR: /tmp
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: blockchain/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install blockchain dependencies
+        working-directory: blockchain
+        run: npm ci
+
+      - name: Install Slither
+        run: |
+          python -m pip install slither-analyzer==0.11.5
+          solc-select install 0.8.28
+          solc-select use 0.8.28
+
+      - name: Record tool versions
+        run: |
+          mkdir -p "${AUDIT_EVIDENCE_DIR}"
+          {
+            echo "node=$(node --version)"
+            echo "npm=$(npm --version)"
+            echo "hardhat=$(cd blockchain && npx hardhat --version)"
+            echo "slither=$(slither --version)"
+            echo "docker=$(docker --version)"
+            echo "mythril=$(docker run --rm ${MYTHRIL_DOCKER_IMAGE} version)"
+          } > "${AUDIT_EVIDENCE_DIR}/tool-versions.txt"
+
+      - name: Compile contracts
+        working-directory: blockchain
+        run: npx hardhat compile
+
+      - name: Run release test suite
+        working-directory: blockchain
+        run: npx hardhat test
+
+      - name: Run Slither baseline
+        env:
+          SLITHER_ALLOW_FINDINGS: '1'
+        run: scripts/run_slither.sh
+
+      - name: Check Slither triage gate
+        run: |
+          node scripts/check_slither_triage.js \
+            --reports-dir "${SLITHER_OUTPUT_DIR}" \
+            --output "${AUDIT_EVIDENCE_DIR}/slither-triage-gate.json"
+
+      - name: Run Mythril symbolic baseline
+        run: scripts/run_mythril.sh
+
+      - name: Generate audit evidence manifest
+        run: |
+          node scripts/generate_audit_manifest.js \
+            --output "${AUDIT_EVIDENCE_DIR}/audit-evidence-manifest.json" \
+            --summary-output "${AUDIT_EVIDENCE_DIR}/audit-evidence-summary.md"
+
+          for doc in \
+            docs/audit-triage.md \
+            docs/slither-accepted-findings.json \
+            docs/operational-authority.md \
+            docs/publication-model.md
+          do
+            if [ -f "${doc}" ]; then
+              cp "${doc}" "${AUDIT_EVIDENCE_DIR}/$(basename "${doc}")"
+            else
+              echo "Optional audit evidence document not present: ${doc}"
+            fi
+          done
+
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-audit-evidence
+          if-no-files-found: warn
+          path: /tmp/qbitmarket-contract-audit-evidence

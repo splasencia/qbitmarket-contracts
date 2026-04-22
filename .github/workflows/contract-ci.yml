@@ -5,16 +5,20 @@ on:
     paths:
       - '.github/workflows/contract-ci.yml'
       - '.github/workflows/contract-operations.yml'
+      - '.github/workflows/contract-audit-evidence.yml'
       - 'blockchain/**'
       - 'deployment/**'
       - 'docs/**'
+      - 'scripts/**'
   push:
     paths:
       - '.github/workflows/contract-ci.yml'
       - '.github/workflows/contract-operations.yml'
+      - '.github/workflows/contract-audit-evidence.yml'
       - 'blockchain/**'
       - 'deployment/**'
       - 'docs/**'
+      - 'scripts/**'
   workflow_dispatch:
 
 concurrency:
@@ -22,20 +26,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  blockchain-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockchain
+    env:
+      PRIVATE_KEY: '0x1111111111111111111111111111111111111111111111111111111111111111'
+      PRIVATE_KEY_QAN: '0x1111111111111111111111111111111111111111111111111111111111111111'
+      TMPDIR: /tmp
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: blockchain/package-lock.json
+
+      - name: Install blockchain dependencies
+        run: npm ci
+
+      - name: Run Hardhat tests
+        run: npx hardhat test
+
   deployment-validation:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: |
-            deployment/package-lock.json
-            deployment/app/package.json
+        uses: actions/checkout@v4
 
       - name: Validate deployment scripts syntax
         run: |
@@ -43,8 +64,12 @@ jobs:
           node --check deployment/app/statePaths.js
           node --check deployment/app/describe_verification.js
           node --check deployment/scripts/bundle_contracts.cjs
+          node --check scripts/verify_contract_bytecode.js
           bash -n deployment/entrypoint.sh
           bash -n deployment/scripts/bundle_contracts.sh
+          bash -n scripts/export_public_contracts.sh
+          bash -n scripts/run_mythril.sh
+          bash -n scripts/run_slither.sh
 
       - name: Build deployment image
         run: docker build -t qbitmarket-contract-deployment-ci ./deployment

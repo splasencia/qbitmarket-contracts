@@ -12,6 +12,16 @@ on:
           - dev
           - preview
           - prd
+      operation:
+        description: Which contracts v3 operation to run
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - describe_verification_manifest
+          - verify_bytecode_local
+          - verify_bytecode_on_chain
       deployOnly:
         description: Optional comma-separated DEPLOY_ONLY target list for deploy runs
         required: false
@@ -44,28 +54,47 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       ENVIRONMENT_NAME: ${{ inputs.environment }}
+      OPERATION: ${{ inputs.operation }}
       DEPLOY_ONLY_INPUT: ${{ inputs.deployOnly }}
       COLLECTION_FACTORY_MARKETPLACE_MODE: ${{ inputs.collectionFactoryMarketplaceMode }}
       VERIFICATION_CONTRACT: ${{ inputs.verificationContract }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Validate operation inputs
         env:
-          DEPLOYER_ADDRESS: ${{ vars.DEPLOYER_ADDRESS }}
+          DEPLOYER_ADDRESS: ${{ secrets.DEPLOYER_ADDRESS }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          RPC_URL: ${{ vars.RPC_URL }}
+          RPC_URL: ${{ secrets.RPC_URL }}
         run: |
           set -eu
 
-          for required_name in DEPLOYER_ADDRESS PRIVATE_KEY RPC_URL; do
-            required_value="$(printenv "${required_name}" || true)"
-            if [ -z "${required_value}" ]; then
-              echo "Missing required environment value: ${required_name}" >&2
+          case "${OPERATION}" in
+            deploy)
+              for required_name in DEPLOYER_ADDRESS PRIVATE_KEY RPC_URL; do
+                required_value="$(printenv "${required_name}" || true)"
+                if [ -z "${required_value}" ]; then
+                  echo "Missing required environment secret: ${required_name}" >&2
+                  exit 1
+                fi
+              done
+              ;;
+            describe_verification_manifest)
+              ;;
+            verify_bytecode_local)
+              ;;
+            verify_bytecode_on_chain)
+              if [ -z "${RPC_URL}" ]; then
+                echo "Missing required environment secret: RPC_URL" >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Unsupported operation: ${OPERATION}" >&2
               exit 1
-            fi
-          done
+              ;;
+          esac
 
       - name: Build deployment image
         run: docker build -t qbitmarket-contract-deployment ./deployment
@@ -73,32 +102,33 @@ jobs:
       - name: Prepare deployment environment file
         id: prepare-env
         env:
-          DEPLOYER_ADDRESS: ${{ vars.DEPLOYER_ADDRESS }}
+          DEPLOYER_ADDRESS: ${{ secrets.DEPLOYER_ADDRESS }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          RPC_URL: ${{ vars.RPC_URL }}
-          MARKETPLACE_OWNER_ADDRESS: ${{ vars.MARKETPLACE_OWNER_ADDRESS }}
-          MARKETPLACE_V2_OWNER_ADDRESS: ${{ vars.MARKETPLACE_V2_OWNER_ADDRESS }}
-          FACTORY_OWNER_ADDRESS: ${{ vars.FACTORY_OWNER_ADDRESS }}
-          FEE_RECIPIENT_ADDRESS: ${{ vars.FEE_RECIPIENT_ADDRESS }}
-          MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS: ${{ vars.MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS }}
-          MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS: ${{ vars.MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS }}
+          RPC_URL: ${{ secrets.RPC_URL }}
+          MARKETPLACE_OWNER_ADDRESS: ${{ secrets.MARKETPLACE_OWNER_ADDRESS }}
+          MARKETPLACE_V2_OWNER_ADDRESS: ${{ secrets.MARKETPLACE_V2_OWNER_ADDRESS }}
+          FACTORY_OWNER_ADDRESS: ${{ secrets.FACTORY_OWNER_ADDRESS }}
+          PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS: ${{ secrets.PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS }}
+          FEE_RECIPIENT_ADDRESS: ${{ secrets.FEE_RECIPIENT_ADDRESS }}
+          MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS: ${{ secrets.MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS }}
+          MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS: ${{ secrets.MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS }}
           MARKETPLACE_PLATFORM_FEE_BPS: ${{ vars.MARKETPLACE_PLATFORM_FEE_BPS }}
           MARKETPLACE_V2_PLATFORM_FEE_BPS: ${{ vars.MARKETPLACE_V2_PLATFORM_FEE_BPS }}
           MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS: ${{ vars.MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS }}
           EVM_VERSION: ${{ vars.EVM_VERSION }}
-          NETWORK_NAME: ${{ vars.NETWORK_NAME }}
         run: |
           set -eu
 
           state_dir="/workspace/deployment/state/${ENVIRONMENT_NAME}"
           contracts_dir="/contracts/${ENVIRONMENT_NAME}/bundled_contracts"
           abi_dir="/contracts/abis"
-          env_file="${RUNNER_TEMP}/contract-operations-${ENVIRONMENT_NAME}.env"
+          env_file="${RUNNER_TEMP}/contracts-v3-${ENVIRONMENT_NAME}.env"
 
           mkdir -p \
             "${GITHUB_WORKSPACE}/deployment/state/${ENVIRONMENT_NAME}" \
             "${GITHUB_WORKSPACE}/blockchain/contracts/${ENVIRONMENT_NAME}" \
-            "${GITHUB_WORKSPACE}/blockchain/contracts/abis"
+            "${GITHUB_WORKSPACE}/blockchain/contracts/abis" \
+            "${GITHUB_WORKSPACE}/collection-meta/${ENVIRONMENT_NAME}"
 
           write_env() {
             key="$1"
@@ -115,10 +145,10 @@ jobs:
           write_env "ABI_DIR" "${abi_dir}"
           write_env "MODULES_DIR" "/app/node_modules"
           write_env "ADDRESSBOOK_DIR" "${state_dir}"
+          write_env "TFVARS_OUTPUT_DIR" "${state_dir}"
           write_env "VERIFICATION_MANIFEST_PATH" "${state_dir}/verification-manifest.json"
           write_env "COLLECTION_FACTORY_MARKETPLACE_MODE" "${COLLECTION_FACTORY_MARKETPLACE_MODE}"
           write_env "EVM_VERSION" "${EVM_VERSION:-paris}"
-          write_env "NETWORK_NAME" "${NETWORK_NAME:-}"
           write_env "MARKETPLACE_PLATFORM_FEE_BPS" "${MARKETPLACE_PLATFORM_FEE_BPS:-250}"
           write_env "MARKETPLACE_V2_PLATFORM_FEE_BPS" "${MARKETPLACE_V2_PLATFORM_FEE_BPS:-250}"
           write_env "DEPLOYER_ADDRESS" "${DEPLOYER_ADDRESS:-}"
@@ -127,6 +157,7 @@ jobs:
           write_env "MARKETPLACE_OWNER_ADDRESS" "${MARKETPLACE_OWNER_ADDRESS:-}"
           write_env "MARKETPLACE_V2_OWNER_ADDRESS" "${MARKETPLACE_V2_OWNER_ADDRESS:-}"
           write_env "FACTORY_OWNER_ADDRESS" "${FACTORY_OWNER_ADDRESS:-}"
+          write_env "PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS" "${PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS:-}"
           write_env "FEE_RECIPIENT_ADDRESS" "${FEE_RECIPIENT_ADDRESS:-}"
           write_env "MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS" "${MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS:-}"
           write_env "MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS" "${MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS:-}"
@@ -138,15 +169,17 @@ jobs:
 
           echo "env_file=${env_file}" >> "${GITHUB_OUTPUT}"
 
-      - name: Run contract deployment
+      - name: Run requested contracts v3 operation
         run: |
           set -eu
 
           docker run --rm \
             --env-file "${{ steps.prepare-env.outputs.env_file }}" \
+            --env OPERATION="${OPERATION}" \
             --env VERIFICATION_CONTRACT="${VERIFICATION_CONTRACT}" \
             -v "${GITHUB_WORKSPACE}:/workspace" \
             -v "${GITHUB_WORKSPACE}/blockchain/contracts:/contracts" \
+            -v "${GITHUB_WORKSPACE}/collection-meta:/collection-meta" \
             --entrypoint bash \
             qbitmarket-contract-deployment \
             -lc '
@@ -160,17 +193,50 @@ jobs:
                 fi
               }
 
-              /app/scripts/bundle_contracts.sh
-              node /app/deploy.js
-              describe_manifest
+              verify_bytecode() {
+                if [ "${1:-local}" = "on_chain" ] && [ -n "${VERIFICATION_CONTRACT:-}" ]; then
+                  node /workspace/scripts/verify_contract_bytecode.js --on-chain --contract "${VERIFICATION_CONTRACT}"
+                elif [ "${1:-local}" = "on_chain" ]; then
+                  node /workspace/scripts/verify_contract_bytecode.js --on-chain
+                elif [ -n "${VERIFICATION_CONTRACT:-}" ]; then
+                  node /workspace/scripts/verify_contract_bytecode.js --contract "${VERIFICATION_CONTRACT}"
+                else
+                  node /workspace/scripts/verify_contract_bytecode.js
+                fi
+              }
+
+              case "${OPERATION}" in
+                deploy)
+                  /app/scripts/bundle_contracts.sh
+                  node /app/deploy.js
+                  describe_manifest
+                  verify_bytecode on_chain
+                  ;;
+                describe_verification_manifest)
+                  describe_manifest
+                  ;;
+                verify_bytecode_local)
+                  /app/scripts/bundle_contracts.sh
+                  verify_bytecode local
+                  ;;
+                verify_bytecode_on_chain)
+                  /app/scripts/bundle_contracts.sh
+                  verify_bytecode on_chain
+                  ;;
+                *)
+                  echo "Unsupported operation: ${OPERATION}" >&2
+                  exit 1
+                  ;;
+              esac
             '
 
       - name: Upload deployment state artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: contract-${{ inputs.environment }}-deploy-state
+          name: contracts-v3-${{ inputs.environment }}-${{ inputs.operation }}-state
           if-no-files-found: warn
           path: |
             deployment/state/${{ inputs.environment }}/address-book.yml
+            deployment/state/${{ inputs.environment }}/contracts.auto.tfvars.json
             deployment/state/${{ inputs.environment }}/verification-manifest.json
