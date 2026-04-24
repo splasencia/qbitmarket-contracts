@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -20,8 +20,10 @@ interface ILazyMintCollection {
     ) external;
 }
 
-contract Marketplace is Ownable, Pausable, ReentrancyGuard {
+contract Marketplace is Ownable2Step, Pausable, ReentrancyGuard {
     uint96 public constant MAX_BPS = 10_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
+    uint96 public constant MAX_COMBINED_FEE_BPS = 5_000;
 
     address public feeRecipient;
     uint96 public platformFeeBps;
@@ -35,11 +37,11 @@ contract Marketplace is Ownable, Pausable, ReentrancyGuard {
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "Marketplace: invalid owner");
         require(initialFeeRecipient_ != address(0), "Marketplace: invalid fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_BPS, "Marketplace: fee too high");
+        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "Marketplace: fee too high");
 
         feeRecipient = initialFeeRecipient_;
         platformFeeBps = initialPlatformFeeBps_;
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
 
         emit FeeRecipientUpdated(address(0), initialFeeRecipient_);
         emit PlatformFeeUpdated(0, initialPlatformFeeBps_);
@@ -112,7 +114,7 @@ contract Marketplace is Ownable, Pausable, ReentrancyGuard {
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_BPS, "Marketplace: fee too high");
+        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "Marketplace: fee too high");
 
         uint96 previousFeeBps = platformFeeBps;
         platformFeeBps = newPlatformFeeBps;
@@ -163,6 +165,10 @@ contract Marketplace is Ownable, Pausable, ReentrancyGuard {
         }
 
         require(platformFeeAmount + royaltyAmount <= salePrice, "Marketplace: payout exceeds sale price");
+        require(
+            platformFeeAmount + royaltyAmount <= (salePrice * MAX_COMBINED_FEE_BPS) / MAX_BPS,
+            "Marketplace: combined fees too high"
+        );
         sellerProceeds = salePrice - platformFeeAmount - royaltyAmount;
     }
 

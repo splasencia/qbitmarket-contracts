@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import "./PaymentToken.sol";
 
-contract PaymentTokenFactory is Ownable {
+contract PaymentTokenFactory is Ownable2Step {
     address[] private _allPaymentTokens;
     mapping(address => address[]) private _paymentTokensByCreator;
     mapping(address => address) public creatorByPaymentToken;
@@ -17,22 +17,24 @@ contract PaymentTokenFactory is Ownable {
         string name,
         string symbol,
         uint8 decimals,
-        uint256 initialSupply
+        uint256 initialSupply,
+        uint256 maxSupply
     );
 
     constructor(address initialOwner_) {
         require(initialOwner_ != address(0), "PaymentTokenFactory: invalid owner");
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
     }
 
     function createPaymentToken(
         string calldata name_,
         string calldata symbol_,
         uint8 decimals_,
-        uint256 initialSupply_
+        uint256 initialSupply_,
+        uint256 maxSupply_
     ) external returns (address token) {
         token = address(
-            new PaymentToken(name_, symbol_, decimals_, initialSupply_, msg.sender)
+            new PaymentToken(name_, symbol_, decimals_, initialSupply_, msg.sender, maxSupply_)
         );
 
         _allPaymentTokens.push(token);
@@ -46,7 +48,8 @@ contract PaymentTokenFactory is Ownable {
             name_,
             symbol_,
             decimals_,
-            initialSupply_
+            initialSupply_,
+            maxSupply_
         );
     }
 

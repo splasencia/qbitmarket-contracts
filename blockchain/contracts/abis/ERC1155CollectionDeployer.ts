@@ -1,5 +1,18 @@
 export const ERC1155CollectionDeployerAbi = [
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "factory",
+        "type": "address"
+      }
+    ],
+    "name": "FactoryInitialized",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "internalType": "string",
@@ -40,6 +53,32 @@ export const ERC1155CollectionDeployerAbi = [
         "type": "address"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "factory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "factory_",
+        "type": "address"
+      }
+    ],
+    "name": "initFactory",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   }

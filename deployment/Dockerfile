@@ -16,7 +16,7 @@ RUN apk add --no-cache nodejs-lts npm python3 make g++ bash python3 py3-pip && \
     ln -s /contracts /app/contracts
 
 # Install OpenZeppelin Contracts and other project dependencies
-RUN npm install @openzeppelin/contracts
+RUN npm install @openzeppelin/contracts @openzeppelin/contracts-upgradeable
 
 # Make the vendored bundling scripts executable
 RUN chmod +x /app/scripts/bundle_contracts.sh

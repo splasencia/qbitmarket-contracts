@@ -902,8 +902,9 @@ async function main() {
     ];
 
     const deployedCollectionFactory = await deployContract(wallet, "CollectionFactory", contractData, constructorArgs);
+    const collectionFactoryAddress = deployedCollectionFactory.address;
     upsertVerificationManifestEntry(verificationManifest, "CollectionFactory", {
-      address: deployedCollectionFactory.address,
+      address: collectionFactoryAddress,
       deployBlockNumber: deployedCollectionFactory.deployBlockNumber,
       contractName: "CollectionFactory",
       verificationContract: buildVerificationContractId(contractData, "CollectionFactory"),
@@ -918,6 +919,37 @@ async function main() {
     console.log(
       `CollectionFactory marketplace target mode: ${collectionFactoryMarketplaceMode} (${resolvedMarketplaceAddress})`
     );
+
+    // Wire deployers to factory (R5 — deployer access control).
+    // Each deployer restricts deploy() to msg.sender == factory, so we call initFactory()
+    // on both deployers right after the factory is live. initFactory() is callable only once.
+    const erc721DeployerContractData = compiledContracts["ERC721CollectionDeployer"];
+    const erc1155DeployerContractData = compiledContracts["ERC1155CollectionDeployer"];
+    if (erc721DeployerContractData) {
+      const erc721DeployerContract = new ethers.Contract(
+        resolvedERC721CollectionDeployerAddress,
+        erc721DeployerContractData.abi,
+        wallet
+      );
+      const tx721 = await erc721DeployerContract.initFactory(collectionFactoryAddress);
+      await tx721.wait();
+      console.log(`ERC721CollectionDeployer.initFactory(${collectionFactoryAddress}) confirmed.`);
+    } else {
+      console.warn("ERC721CollectionDeployer ABI not available — skipping initFactory. Run the deployer target first.");
+    }
+    if (erc1155DeployerContractData) {
+      const erc1155DeployerContract = new ethers.Contract(
+        resolvedERC1155CollectionDeployerAddress,
+        erc1155DeployerContractData.abi,
+        wallet
+      );
+      const tx1155 = await erc1155DeployerContract.initFactory(collectionFactoryAddress);
+      await tx1155.wait();
+      console.log(`ERC1155CollectionDeployer.initFactory(${collectionFactoryAddress}) confirmed.`);
+    } else {
+      console.warn("ERC1155CollectionDeployer ABI not available — skipping initFactory. Run the deployer target first.");
+    }
+
     console.log("Collections are created later through CollectionFactory.createCollection(...).");
   }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 interface IERC721CollectionDeployer {
     function deploy(
@@ -26,7 +26,7 @@ interface IERC1155CollectionDeployer {
     ) external returns (address collection);
 }
 
-contract CollectionFactory is Ownable {
+contract CollectionFactory is Ownable2Step {
     uint8 public constant STANDARD_UNKNOWN = 0;
     uint8 public constant STANDARD_ERC721 = 1;
     uint8 public constant STANDARD_ERC1155 = 2;
@@ -84,7 +84,7 @@ contract CollectionFactory is Ownable {
         marketplace = initialMarketplace_;
         erc721CollectionDeployer = initialERC721CollectionDeployer_;
         erc1155CollectionDeployer = initialERC1155CollectionDeployer_;
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
 
         emit MarketplaceUpdated(address(0), initialMarketplace_);
         emit ERC721CollectionDeployerUpdated(address(0), initialERC721CollectionDeployer_);

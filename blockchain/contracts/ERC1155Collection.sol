@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
-contract ERC1155Collection is ERC1155, ERC1155Supply, ERC2981, Ownable, Pausable {
+contract ERC1155Collection is ERC1155, ERC1155Supply, ERC2981, Ownable2Step, Pausable {
     uint96 public constant MAX_BPS = 10_000;
 
     string private _name;
@@ -45,7 +45,7 @@ contract ERC1155Collection is ERC1155, ERC1155Supply, ERC2981, Ownable, Pausable
             require(royaltyBps_ == 0, "ERC1155Collection: royalty recipient required");
         }
 
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
         emit ContractURIUpdated(contractURI_);
     }
 

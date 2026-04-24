@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -9,8 +9,9 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard, IERC1155Receiver {
+abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, ReentrancyGuard, IERC1155Receiver {
     uint96 public constant MAX_BPS = 10_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
 
     struct Listing {
         address seller;
@@ -252,12 +253,12 @@ abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "bad owner");
         require(initialFeeRecipient_ != address(0), "bad fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_BPS, "fee high");
+        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "fee high");
 
         feeRecipient = initialFeeRecipient_;
         platformFeeBps = initialPlatformFeeBps_;
         siteNativePaymentTokenFeeBps = initialPlatformFeeBps_;
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
 
         emit FeeRecipientUpdated(address(0), initialFeeRecipient_);
         emit PlatformFeeUpdated(0, initialPlatformFeeBps_);
@@ -298,7 +299,7 @@ abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_BPS, "fee high");
+        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "fee high");
         require(newPlatformFeeBps >= siteNativePaymentTokenFeeBps, "below native fee");
 
         uint96 previousFeeBps = platformFeeBps;

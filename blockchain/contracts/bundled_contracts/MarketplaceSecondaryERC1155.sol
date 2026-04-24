@@ -5,7 +5,7 @@ pragma solidity ^0.8.28;
 
 // File: MarketplaceSecondaryERC1155Auctions.sol
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
 /**
@@ -82,10 +82,10 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.3) (token/ERC20/utils/SafeERC20.sol)
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (token/ERC20/extensions/IERC20Permit.sol)
 
 /**
@@ -174,7 +174,7 @@ interface IERC20Permit {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
-// File: ../node_modules/@openzeppelin/contracts/utils/Address.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Address.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
 
 /**
@@ -552,10 +552,10 @@ library SafeERC20 {
     }
 }
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC1155/IERC1155.sol)
 
-// File: ../node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 /**
@@ -698,7 +698,7 @@ interface IERC1155 is IERC165 {
 
 // File: MarketplaceSecondaryPayments.sol
 
-// File: ../node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC2981.sol)
 
 /**
@@ -722,10 +722,13 @@ interface IERC2981 is IERC165 {
 
 // File: MarketplaceSecondaryBase.sol
 
-// File: ../node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable2Step.sol
+// OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable2Step.sol)
+
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**
@@ -829,7 +832,58 @@ abstract contract Ownable is Context {
     }
 }
 
-// File: ../node_modules/@openzeppelin/contracts/security/Pausable.sol
+/**
+ * @dev Contract module which provides access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership} and {acceptOwnership}.
+ *
+ * This module is used through inheritance. It will make available all functions
+ * from parent (Ownable).
+ */
+abstract contract Ownable2Step is Ownable {
+    address private _pendingOwner;
+
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Returns the address of the pending owner.
+     */
+    function pendingOwner() public view virtual returns (address) {
+        return _pendingOwner;
+    }
+
+    /**
+     * @dev Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one.
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual override onlyOwner {
+        _pendingOwner = newOwner;
+        emit OwnershipTransferStarted(owner(), newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`) and deletes any pending owner.
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual override {
+        delete _pendingOwner;
+        super._transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev The new owner accepts the ownership transfer.
+     */
+    function acceptOwnership() public virtual {
+        address sender = _msgSender();
+        require(pendingOwner() == sender, "Ownable2Step: caller is not the new owner");
+        _transferOwnership(sender);
+    }
+}
+
+// File: ../app/node_modules/@openzeppelin/contracts/security/Pausable.sol
 // OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)
 
 /**
@@ -931,7 +985,7 @@ abstract contract Pausable is Context {
     }
 }
 
-// File: ../node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
+// File: ../app/node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (security/ReentrancyGuard.sol)
 
 /**
@@ -1007,7 +1061,7 @@ abstract contract ReentrancyGuard {
     }
 }
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
 // OpenZeppelin Contracts (last updated v4.5.0) (token/ERC1155/IERC1155Receiver.sol)
 
 /**
@@ -1062,7 +1116,7 @@ interface IERC1155Receiver is IERC165 {
     ) external returns (bytes4);
 }
 
-// File: ../node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/IERC721.sol)
 
 /**
@@ -1191,8 +1245,9 @@ interface IERC721 is IERC165 {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
-abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard, IERC1155Receiver {
+abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, ReentrancyGuard, IERC1155Receiver {
     uint96 public constant MAX_BPS = 10_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
 
     struct Listing {
         address seller;
@@ -1434,12 +1489,12 @@ abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "bad owner");
         require(initialFeeRecipient_ != address(0), "bad fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_BPS, "fee high");
+        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "fee high");
 
         feeRecipient = initialFeeRecipient_;
         platformFeeBps = initialPlatformFeeBps_;
         siteNativePaymentTokenFeeBps = initialPlatformFeeBps_;
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
 
         emit FeeRecipientUpdated(address(0), initialFeeRecipient_);
         emit PlatformFeeUpdated(0, initialPlatformFeeBps_);
@@ -1480,7 +1535,7 @@ abstract contract MarketplaceSecondaryBase is Ownable, Pausable, ReentrancyGuard
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_BPS, "fee high");
+        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "fee high");
         require(newPlatformFeeBps >= siteNativePaymentTokenFeeBps, "below native fee");
 
         uint96 previousFeeBps = platformFeeBps;

@@ -276,3 +276,13 @@ jobs:
             deployment/state/${{ inputs.environment }}/address-book.yml
             deployment/state/${{ inputs.environment }}/contracts.auto.tfvars.json
             deployment/state/${{ inputs.environment }}/verification-manifest.json
+
+      - name: Upload deployment ABI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-${{ inputs.environment }}-${{ inputs.operation }}-abis
+          if-no-files-found: warn
+          path: |
+            blockchain/contracts/abis/*.json
+            blockchain/contracts/abis/*.ts

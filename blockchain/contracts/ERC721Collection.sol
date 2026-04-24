@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-contract ERC721Collection is ERC721URIStorage, ERC2981, Ownable, Pausable {
+contract ERC721Collection is ERC721URIStorage, ERC2981, Ownable2Step, Pausable {
     bytes32 public constant LEAF_TYPEHASH =
         keccak256(
             "LazyMintLeaf(uint256 chainId,address collection,uint256 rootVersion,uint256 tokenId,bytes32 uriHash,uint256 price)"
@@ -56,7 +56,7 @@ contract ERC721Collection is ERC721URIStorage, ERC2981, Ownable, Pausable {
             require(royaltyBps_ == 0, "ERC721Collection: royalty recipient required");
         }
 
-        transferOwnership(initialOwner_);
+        _transferOwnership(initialOwner_);
         emit MarketplaceUpdated(address(0), initialMarketplace_);
         emit ContractURIUpdated(contractURI_);
     }

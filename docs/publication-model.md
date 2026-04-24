@@ -222,8 +222,9 @@ Before publishing or deploying from the public repository:
    `verification-manifest.json`. Deploy runs validate the aliases produced by
    their current deploy target selection; standalone verification runs validate
    the whole manifest unless a `verificationContract` filter is supplied.
-9. Download and retain the generated `address-book.yml` and
-   `verification-manifest.json` artifacts.
+9. Download and retain the generated `address-book.yml`,
+   `contracts.auto.tfvars.json`, `verification-manifest.json`, and ABI
+   artifacts.
 10. Use the generated state in the private monorepo for frontend/indexer env
    syncing, but keep those consumer-specific scripts private.
 11. Create an immutable public release when the deployment should become a

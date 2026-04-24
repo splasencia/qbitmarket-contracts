@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract PaymentToken is ERC20, Ownable {
+contract PaymentToken is ERC20, Ownable2Step {
     uint8 private immutable _tokenDecimals;
+    uint256 public immutable maxSupply;
 
     event TokensMinted(address indexed operator, address indexed to, uint256 amount);
 
@@ -14,15 +15,20 @@ contract PaymentToken is ERC20, Ownable {
         string memory symbol_,
         uint8 decimals_,
         uint256 initialSupply_,
-        address initialOwner_
+        address initialOwner_,
+        uint256 maxSupply_
     ) ERC20(name_, symbol_) {
         require(bytes(name_).length > 0, "PaymentToken: invalid name");
         require(bytes(symbol_).length > 0, "PaymentToken: invalid symbol");
         require(initialOwner_ != address(0), "PaymentToken: invalid owner");
         require(decimals_ <= 18, "PaymentToken: decimals too high");
+        if (maxSupply_ > 0) {
+            require(initialSupply_ <= maxSupply_, "PaymentToken: initial supply exceeds cap");
+        }
 
         _tokenDecimals = decimals_;
-        transferOwnership(initialOwner_);
+        maxSupply = maxSupply_;
+        _transferOwnership(initialOwner_);
 
         if (initialSupply_ > 0) {
             _mint(initialOwner_, initialSupply_);
@@ -37,6 +43,9 @@ contract PaymentToken is ERC20, Ownable {
     function mint(address to, uint256 amount) external onlyOwner {
         require(to != address(0), "PaymentToken: invalid recipient");
         require(amount > 0, "PaymentToken: invalid amount");
+        if (maxSupply > 0) {
+            require(totalSupply() + amount <= maxSupply, "PaymentToken: cap exceeded");
+        }
 
         _mint(to, amount);
         emit TokensMinted(msg.sender, to, amount);
