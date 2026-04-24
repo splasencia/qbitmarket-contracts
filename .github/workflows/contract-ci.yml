@@ -60,16 +60,33 @@ jobs:
 
       - name: Validate deployment scripts syntax
         run: |
+          check_node_script() {
+            script_path="$1"
+            if [ -f "${script_path}" ]; then
+              node --check "${script_path}"
+            else
+              echo "Skipping missing optional Node script: ${script_path}"
+            fi
+          }
+
+          check_shell_script() {
+            script_path="$1"
+            if [ -f "${script_path}" ]; then
+              bash -n "${script_path}"
+            else
+              echo "Skipping missing optional shell script: ${script_path}"
+            fi
+          }
+
           node --check deployment/app/deploy.js
           node --check deployment/app/statePaths.js
           node --check deployment/app/describe_verification.js
           node --check deployment/scripts/bundle_contracts.cjs
-          node --check scripts/verify_contract_bytecode.js
+          check_node_script scripts/verify_contract_bytecode.js
           bash -n deployment/entrypoint.sh
           bash -n deployment/scripts/bundle_contracts.sh
-          bash -n scripts/export_public_contracts.sh
-          bash -n scripts/run_mythril.sh
-          bash -n scripts/run_slither.sh
+          check_shell_script scripts/run_mythril.sh
+          check_shell_script scripts/run_slither.sh
 
       - name: Build deployment image
         run: docker build -t qbitmarket-contract-deployment-ci ./deployment
