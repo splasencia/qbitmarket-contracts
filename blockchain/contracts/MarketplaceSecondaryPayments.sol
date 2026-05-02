@@ -7,6 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./MarketplaceSecondaryBase.sol";
 
+interface IPaymentTokenFactoryRegistry {
+    function creatorByPaymentToken(address token) external view returns (address);
+}
+
 abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
     using SafeERC20 for IERC20;
 
@@ -16,6 +20,8 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         uint96 initialPlatformFeeBps_
     ) MarketplaceSecondaryBase(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
 
+    /// @notice Sets the ERC-20 token that receives the intentional site-native marketplace fee discount.
+    /// @dev The token must be accepted by the hybrid payment-token policy before it can be configured.
     function setSiteNativePaymentToken(address newToken) external onlyOwner {
         if (newToken != address(0)) {
             _requireSupportedPaymentToken(newToken);
@@ -27,6 +33,8 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         emit SiteNativePaymentTokenUpdated(previousToken, newToken);
     }
 
+    /// @notice Sets the reduced fee for the configured site-native payment token.
+    /// @dev The reduced fee must stay less than or equal to the standard platform fee.
     function setSiteNativePaymentTokenFeeBps(uint96 newFeeBps) external onlyOwner {
         require(newFeeBps <= platformFeeBps, "native fee high");
 
@@ -36,6 +44,8 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         emit SiteNativePaymentTokenFeeUpdated(previousFeeBps, newFeeBps);
     }
 
+    /// @notice Atomically configures the site-native discount token and its reduced marketplace fee.
+    /// @dev This two-tier fee model is intentional: regular tokens use platformFeeBps, while the configured site token uses newFeeBps.
     function setSiteNativePaymentTokenConfig(address newToken, uint96 newFeeBps) external onlyOwner {
         if (newToken != address(0)) {
             _requireSupportedPaymentToken(newToken);
@@ -52,6 +62,7 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         emit SiteNativePaymentTokenFeeUpdated(previousFeeBps, newFeeBps);
     }
 
+    /// @notice Returns the marketplace fee for a payment token, including the site-native discount when applicable.
     function effectivePlatformFeeBps(address paymentToken) public view returns (uint96) {
         if (
             siteNativePaymentToken != address(0) &&
@@ -99,6 +110,24 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
     function _requireSupportedPaymentToken(address paymentToken) internal view {
         if (paymentToken != address(0)) {
             require(paymentToken.code.length > 0, "bad pay token");
+            require(
+                allowedPaymentTokens[paymentToken] || _isFactoryPaymentToken(paymentToken),
+                "payment token not allowed"
+            );
+        }
+    }
+
+    function _isFactoryPaymentToken(address paymentToken) internal view returns (bool) {
+        if (paymentTokenFactory == address(0)) {
+            return false;
+        }
+
+        try IPaymentTokenFactoryRegistry(paymentTokenFactory).creatorByPaymentToken(paymentToken) returns (
+            address creator
+        ) {
+            return creator != address(0);
+        } catch {
+            return false;
         }
     }
 

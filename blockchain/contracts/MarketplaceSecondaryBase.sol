@@ -86,6 +86,7 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     uint96 public platformFeeBps;
     address public siteNativePaymentToken;
     uint96 public siteNativePaymentTokenFeeBps;
+    address public paymentTokenFactory;
     uint256 public nextListingId = 1;
     uint256 public nextOfferId = 1;
     uint256 public nextERC1155OfferId = 1;
@@ -93,6 +94,7 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     uint256 public nextERC1155ListingId = 1;
     uint256 public nextERC1155AuctionId = 1;
 
+    mapping(address => bool) public allowedPaymentTokens;
     mapping(uint256 => Listing) public listings;
     mapping(uint256 => Offer) public offers;
     mapping(uint256 => ERC1155Offer) public erc1155Offers;
@@ -249,6 +251,8 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     event PlatformFeeUpdated(uint96 previousFeeBps, uint96 newFeeBps);
     event SiteNativePaymentTokenUpdated(address indexed previousToken, address indexed newToken);
     event SiteNativePaymentTokenFeeUpdated(uint96 previousFeeBps, uint96 newFeeBps);
+    event PaymentTokenAllowed(address indexed token, bool allowed);
+    event PaymentTokenFactoryUpdated(address indexed previousFactory, address indexed newFactory);
 
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "bad owner");
@@ -306,6 +310,26 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
         platformFeeBps = newPlatformFeeBps;
 
         emit PlatformFeeUpdated(previousFeeBps, newPlatformFeeBps);
+    }
+
+    function setPaymentTokenAllowed(address token, bool allowed) external onlyOwner {
+        require(token != address(0), "bad token");
+        require(token.code.length > 0, "bad pay token");
+
+        allowedPaymentTokens[token] = allowed;
+
+        emit PaymentTokenAllowed(token, allowed);
+    }
+
+    function setPaymentTokenFactory(address newFactory) external onlyOwner {
+        if (newFactory != address(0)) {
+            require(newFactory.code.length > 0, "bad token factory");
+        }
+
+        address previousFactory = paymentTokenFactory;
+        paymentTokenFactory = newFactory;
+
+        emit PaymentTokenFactoryUpdated(previousFactory, newFactory);
     }
 
     function pause() external onlyOwner {

@@ -33,6 +33,8 @@ contract MarketplacePrimaryUpgradeable is
     ReentrancyGuardUpgradeable
 {
     uint96 public constant MAX_BPS = 10_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
+    uint96 public constant MAX_COMBINED_FEE_BPS = 5_000;
 
     address public feeRecipient;
     uint96 public platformFeeBps;
@@ -54,7 +56,7 @@ contract MarketplacePrimaryUpgradeable is
     {
         require(initialOwner_ != address(0), "MarketplacePrimaryUpgradeable: invalid owner");
         require(initialFeeRecipient_ != address(0), "MarketplacePrimaryUpgradeable: invalid fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_BPS, "MarketplacePrimaryUpgradeable: fee too high");
+        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "MarketplacePrimaryUpgradeable: fee too high");
 
         __Ownable_init();
         __Pausable_init();
@@ -135,7 +137,7 @@ contract MarketplacePrimaryUpgradeable is
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_BPS, "MarketplacePrimaryUpgradeable: fee too high");
+        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "MarketplacePrimaryUpgradeable: fee too high");
 
         uint96 previousFeeBps = platformFeeBps;
         platformFeeBps = newPlatformFeeBps;
@@ -192,6 +194,10 @@ contract MarketplacePrimaryUpgradeable is
         require(
             platformFeeAmount + royaltyAmount <= salePrice,
             "MarketplacePrimaryUpgradeable: payout exceeds sale price"
+        );
+        require(
+            platformFeeAmount + royaltyAmount <= (salePrice * MAX_COMBINED_FEE_BPS) / MAX_BPS,
+            "MarketplacePrimaryUpgradeable: combined fees too high"
         );
         sellerProceeds = salePrice - platformFeeAmount - royaltyAmount;
     }

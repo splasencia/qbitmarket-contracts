@@ -49,6 +49,75 @@ function getConfiguredAddress(name, fallback) {
   return configured ? requireAddress(configured, name) : fallback;
 }
 
+function getOptionalConfiguredAddress(names) {
+  const envNames = Array.isArray(names) ? names : [names];
+
+  for (const name of envNames) {
+    const configured = process.env[name];
+    if (configured !== undefined && configured !== "") {
+      return requireAddress(configured, name);
+    }
+  }
+
+  return null;
+}
+
+function parseAddressList(value, label) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return [];
+  }
+
+  const trimmed = String(value).trim();
+  let entries;
+  if (trimmed.startsWith("[")) {
+    try {
+      entries = JSON.parse(trimmed);
+    } catch (error) {
+      throw new Error(`Invalid JSON address list for ${label}: ${error.message}`);
+    }
+
+    if (!Array.isArray(entries)) {
+      throw new Error(`Invalid address list for ${label}: expected a JSON array.`);
+    }
+  } else {
+    entries = trimmed.split(",");
+  }
+
+  const normalized = [];
+  const seen = new Set();
+  for (const entry of entries) {
+    const address = String(entry || "").trim();
+    if (!address) {
+      continue;
+    }
+
+    const checkedAddress = requireAddress(address, label);
+    const key = checkedAddress.toLowerCase();
+    if (!seen.has(key)) {
+      normalized.push(checkedAddress);
+      seen.add(key);
+    }
+  }
+
+  return normalized;
+}
+
+function parseBooleanEnv(value, defaultValue = false) {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "y"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "n"].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean env value: ${value}`);
+}
+
 function parseCollectionFactoryMarketplaceMode(rawValue) {
   const normalized = String(rawValue || "legacy").trim().toLowerCase();
   if (normalized === "legacy" || normalized === "primary_proxy") {
@@ -120,11 +189,11 @@ const DEPLOYMENT_TARGET_SPECS = {
 };
 const DEFAULT_DEPLOY_ORDER = [
   "Marketplace",
+  "PaymentTokenFactory",
   "MarketplaceV2",
   "ERC721CollectionDeployer",
   "ERC1155CollectionDeployer",
   "CollectionFactory",
-  "PaymentTokenFactory",
 ];
 
 function serializeForJson(value) {
@@ -381,6 +450,13 @@ function hasAddressBookAddress(addressBook, contractName) {
   return typeof value === "string" && ethers.utils.isAddress(value);
 }
 
+function getAddressBookAddress(contractName) {
+  const addressBook = loadAddressBook();
+  return hasAddressBookAddress(addressBook, contractName)
+    ? requireAddress(addressBook[contractName], `address-book.${contractName}`)
+    : null;
+}
+
 function isDeploymentAliasProducedByTargets(deploymentTargets, deploymentAlias) {
   if (deploymentTargets.includes(deploymentAlias)) {
     return true;
@@ -486,8 +562,11 @@ async function deploySecondaryMarketplace({
   owner,
   feeRecipient,
   feeBps,
+  paymentTokenFactoryAddress,
+  allowedPaymentTokens = [],
   siteNativeTokenAddress,
   siteNativeTokenFeeBps,
+  hasPaymentTokenFactoryAddress,
   hasSiteNativeTokenAddress,
   hasSiteNativeTokenFeeBps,
 }) {
@@ -508,8 +587,31 @@ async function deploySecondaryMarketplace({
     constructorArgs,
   });
 
-  if (hasSiteNativeTokenAddress || hasSiteNativeTokenFeeBps) {
+  const hasAllowedPaymentTokens = allowedPaymentTokens.length > 0;
+  if (
+    hasPaymentTokenFactoryAddress ||
+    hasAllowedPaymentTokens ||
+    hasSiteNativeTokenAddress ||
+    hasSiteNativeTokenFeeBps
+  ) {
     const secondaryMarketplaceContract = new ethers.Contract(deployedAddress, contractData.abi, wallet);
+    const postDeployConfiguration = {};
+
+    if (hasPaymentTokenFactoryAddress) {
+      const tx = await secondaryMarketplaceContract.setPaymentTokenFactory(paymentTokenFactoryAddress);
+      await tx.wait();
+      console.log(`Configured ${deploymentAlias} payment-token factory: factory=${paymentTokenFactoryAddress}`);
+      postDeployConfiguration.paymentTokenFactoryAddress = paymentTokenFactoryAddress;
+    }
+
+    if (hasAllowedPaymentTokens) {
+      for (const allowedPaymentToken of allowedPaymentTokens) {
+        const tx = await secondaryMarketplaceContract.setPaymentTokenAllowed(allowedPaymentToken, true);
+        await tx.wait();
+        console.log(`Allowed ${deploymentAlias} external payment token: token=${allowedPaymentToken}`);
+      }
+      postDeployConfiguration.allowedPaymentTokens = allowedPaymentTokens;
+    }
 
     if (hasSiteNativeTokenAddress && hasSiteNativeTokenFeeBps) {
       const tx = await secondaryMarketplaceContract.setSiteNativePaymentTokenConfig(
@@ -530,15 +632,119 @@ async function deploySecondaryMarketplace({
       console.log(`Configured ${deploymentAlias} site-native token fee: feeBps=${siteNativeTokenFeeBps}`);
     }
 
+    if (hasSiteNativeTokenAddress || hasSiteNativeTokenFeeBps) {
+      postDeployConfiguration.siteNativeTokenAddress = siteNativeTokenAddress;
+      postDeployConfiguration.siteNativeTokenFeeBps = siteNativeTokenFeeBps;
+      postDeployConfiguration.siteNativeFeeDiscountIntentional = true;
+    }
+
     upsertVerificationManifestEntry(verificationManifest, deploymentAlias, {
-      postDeployConfiguration: {
-        siteNativeTokenAddress,
-        siteNativeTokenFeeBps,
-      },
+      postDeployConfiguration,
     });
   }
 
   return deployedAddress;
+}
+
+async function deployPaymentTokenFactory({
+  wallet,
+  compiledContracts,
+  verificationManifest,
+  owner,
+}) {
+  const contractData = compiledContracts["PaymentTokenFactory"];
+  if (!contractData) {
+    throw new Error("PaymentTokenFactory contract was not found in compiled contracts.");
+  }
+
+  const constructorArgs = [owner];
+
+  const deployedPaymentTokenFactory = await deployContract(wallet, "PaymentTokenFactory", contractData, constructorArgs);
+  upsertVerificationManifestEntry(verificationManifest, "PaymentTokenFactory", {
+    address: deployedPaymentTokenFactory.address,
+    deployBlockNumber: deployedPaymentTokenFactory.deployBlockNumber,
+    contractName: "PaymentTokenFactory",
+    verificationContract: buildVerificationContractId(contractData, "PaymentTokenFactory"),
+    constructorArgs,
+  });
+  console.log("ERC-20 payment tokens are created later through PaymentTokenFactory.createPaymentToken(...).");
+
+  return deployedPaymentTokenFactory.address;
+}
+
+async function requireContractOwners(provider, ownerEntries) {
+  const uniqueOwners = new Map();
+  for (const [label, address] of ownerEntries) {
+    const key = address.toLowerCase();
+    const existing = uniqueOwners.get(key);
+    uniqueOwners.set(key, existing ? `${existing}, ${label}` : label);
+  }
+
+  for (const [address, labels] of uniqueOwners.entries()) {
+    const code = await provider.getCode(address);
+    if (code === "0x") {
+      throw new Error(
+        `Owner address must be a deployed contract when REQUIRE_CONTRACT_OWNER_CODE=true: ${labels} -> ${address}`
+      );
+    }
+  }
+}
+
+async function readOptionalPendingOwner(contract) {
+  try {
+    return await contract.pendingOwner();
+  } catch {
+    return null;
+  }
+}
+
+async function verifyDeployedOwners({
+  provider,
+  compiledContracts,
+  verificationManifest,
+  ownerExpectations,
+}) {
+  const checkedAtBlock = await provider.getBlockNumber();
+
+  for (const expectation of ownerExpectations) {
+    const manifestEntry = verificationManifest.contracts[expectation.deploymentAlias];
+    if (!manifestEntry?.address) {
+      continue;
+    }
+
+    const contractData = compiledContracts[expectation.abiContractName];
+    if (!contractData?.abi) {
+      console.warn(
+        `Skipping owner verification for ${expectation.deploymentAlias}: ABI ${expectation.abiContractName} not available.`
+      );
+      continue;
+    }
+
+    const contract = new ethers.Contract(manifestEntry.address, contractData.abi, provider);
+    const actualOwner = await contract.owner();
+    const pendingOwner = await readOptionalPendingOwner(contract);
+    const matchesExpectedOwner = actualOwner.toLowerCase() === expectation.expectedOwner.toLowerCase();
+
+    if (!matchesExpectedOwner) {
+      throw new Error(
+        `${expectation.deploymentAlias} owner verification failed: expected ${expectation.expectedOwner}, got ${actualOwner}`
+      );
+    }
+
+    upsertVerificationManifestEntry(verificationManifest, expectation.deploymentAlias, {
+      ownerVerification: {
+        expectedOwner: expectation.expectedOwner,
+        actualOwner,
+        pendingOwner,
+        checkedAtBlock,
+        matchesExpectedOwner,
+      },
+    });
+    console.log(
+      `Verified ${expectation.deploymentAlias} owner: ${actualOwner}` +
+        (pendingOwner && pendingOwner !== ethers.constants.AddressZero ? ` (pending: ${pendingOwner})` : "")
+    );
+  }
 }
 
 // Main Function
@@ -549,11 +755,17 @@ async function main() {
   const rpcUrl = requireEnv("RPC_URL");
   const privateKey = requireEnv("PRIVATE_KEY");
   const fallbackOwner = requireAddress(process.env.DEPLOYER_ADDRESS, "DEPLOYER_ADDRESS");
-  const marketplaceOwner = getConfiguredAddress("MARKETPLACE_OWNER_ADDRESS", fallbackOwner);
+  const sharedContractOwner = getOptionalConfiguredAddress(["CONTRACT_OWNER_ADDRESS", "SAFE_OWNER_ADDRESS"]);
+  const defaultContractOwner = sharedContractOwner || fallbackOwner;
+  const marketplaceOwner = getConfiguredAddress("MARKETPLACE_OWNER_ADDRESS", defaultContractOwner);
   const marketplaceV2Owner = getConfiguredAddress("MARKETPLACE_V2_OWNER_ADDRESS", marketplaceOwner);
-  const marketplacePrimaryProxyAdminOwner = marketplaceOwner;
-  const factoryOwner = getConfiguredAddress("FACTORY_OWNER_ADDRESS", fallbackOwner);
-  const paymentTokenFactoryOwner = getConfiguredAddress("PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS", fallbackOwner);
+  const marketplacePrimaryProxyAdminOwner = getConfiguredAddress(
+    "MARKETPLACE_PRIMARY_PROXY_ADMIN_OWNER_ADDRESS",
+    marketplaceOwner
+  );
+  const factoryOwner = getConfiguredAddress("FACTORY_OWNER_ADDRESS", defaultContractOwner);
+  const paymentTokenFactoryOwner = getConfiguredAddress("PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS", defaultContractOwner);
+  const requireContractOwnerCode = parseBooleanEnv(process.env.REQUIRE_CONTRACT_OWNER_CODE, false);
   const collectionFactoryMarketplaceMode = parseCollectionFactoryMarketplaceMode(
     process.env.COLLECTION_FACTORY_MARKETPLACE_MODE
   );
@@ -587,6 +799,22 @@ async function main() {
         "MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS"
       )
     : null;
+  if (
+    hasMarketplaceV2SiteNativeTokenFeeBps &&
+    marketplaceV2SiteNativeTokenFeeBps > secondaryMarketplaceFeeBps
+  ) {
+    throw new Error(
+      "MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS must be less than or equal to MARKETPLACE_V2_PLATFORM_FEE_BPS."
+    );
+  }
+  const configuredMarketplaceV2PaymentTokenFactoryAddress = getOptionalConfiguredAddress([
+    "MARKETPLACE_V2_PAYMENT_TOKEN_FACTORY_ADDRESS",
+    "PAYMENT_TOKEN_FACTORY_ADDRESS",
+  ]);
+  const marketplaceV2AllowedPaymentTokens = parseAddressList(
+    process.env.MARKETPLACE_V2_ALLOWED_PAYMENT_TOKENS,
+    "MARKETPLACE_V2_ALLOWED_PAYMENT_TOKENS"
+  );
 
   // Initialize wallet and provider
   let wallet;
@@ -599,6 +827,16 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
   wallet = wallet.connect(provider);
   const network = await provider.getNetwork();
+
+  if (requireContractOwnerCode) {
+    await requireContractOwners(provider, [
+      ["MARKETPLACE_OWNER_ADDRESS", marketplaceOwner],
+      ["MARKETPLACE_V2_OWNER_ADDRESS", marketplaceV2Owner],
+      ["MARKETPLACE_PRIMARY_PROXY_ADMIN_OWNER_ADDRESS", marketplacePrimaryProxyAdminOwner],
+      ["FACTORY_OWNER_ADDRESS", factoryOwner],
+      ["PAYMENT_TOKEN_FACTORY_OWNER_ADDRESS", paymentTokenFactoryOwner],
+    ]);
+  }
 
   // Check wallet balance
 
@@ -646,6 +884,8 @@ async function main() {
   let marketplacePrimaryProxyAddress = null;
   let erc721CollectionDeployerAddress = null;
   let erc1155CollectionDeployerAddress = null;
+  let paymentTokenFactoryAddress =
+    configuredMarketplaceV2PaymentTokenFactoryAddress || getAddressBookAddress("PaymentTokenFactory");
 
   if (deploymentTargets.includes("Marketplace")) {
     let contractData = compiledContracts["Marketplace"];
@@ -670,6 +910,29 @@ async function main() {
     });
   }
 
+  if (deploymentTargets.includes("PaymentTokenFactory")) {
+    paymentTokenFactoryAddress = await deployPaymentTokenFactory({
+      wallet,
+      compiledContracts,
+      verificationManifest,
+      owner: paymentTokenFactoryOwner,
+    });
+  }
+
+  const hasMarketplaceV2PaymentTokenFactoryAddress = paymentTokenFactoryAddress !== null;
+  if (hasMarketplaceV2SiteNativeTokenAddress && !hasMarketplaceV2PaymentTokenFactoryAddress) {
+    const siteNativeTokenIsAllowed = marketplaceV2AllowedPaymentTokens.some(
+      (tokenAddress) => tokenAddress.toLowerCase() === marketplaceV2SiteNativeTokenAddress.toLowerCase()
+    );
+
+    if (!siteNativeTokenIsAllowed) {
+      throw new Error(
+        "MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS requires a payment-token factory or an explicit " +
+          "MARKETPLACE_V2_ALLOWED_PAYMENT_TOKENS entry before secondary marketplace deployment."
+      );
+    }
+  }
+
   if (deploymentTargets.includes("MarketplaceV2")) {
     await deploySecondaryMarketplace(
       {
@@ -680,8 +943,11 @@ async function main() {
         owner: marketplaceV2Owner,
         feeRecipient: marketplaceV2FeeRecipient,
         feeBps: secondaryMarketplaceFeeBps,
+        paymentTokenFactoryAddress,
+        allowedPaymentTokens: marketplaceV2AllowedPaymentTokens,
         siteNativeTokenAddress: marketplaceV2SiteNativeTokenAddress,
         siteNativeTokenFeeBps: marketplaceV2SiteNativeTokenFeeBps,
+        hasPaymentTokenFactoryAddress: hasMarketplaceV2PaymentTokenFactoryAddress,
         hasSiteNativeTokenAddress: hasMarketplaceV2SiteNativeTokenAddress,
         hasSiteNativeTokenFeeBps: hasMarketplaceV2SiteNativeTokenFeeBps,
       }
@@ -698,8 +964,11 @@ async function main() {
         owner: marketplaceV2Owner,
         feeRecipient: marketplaceV2FeeRecipient,
         feeBps: secondaryMarketplaceFeeBps,
+        paymentTokenFactoryAddress,
+        allowedPaymentTokens: marketplaceV2AllowedPaymentTokens,
         siteNativeTokenAddress: marketplaceV2SiteNativeTokenAddress,
         siteNativeTokenFeeBps: marketplaceV2SiteNativeTokenFeeBps,
+        hasPaymentTokenFactoryAddress: hasMarketplaceV2PaymentTokenFactoryAddress,
         hasSiteNativeTokenAddress: hasMarketplaceV2SiteNativeTokenAddress,
         hasSiteNativeTokenFeeBps: hasMarketplaceV2SiteNativeTokenFeeBps,
       }
@@ -716,8 +985,11 @@ async function main() {
         owner: marketplaceV2Owner,
         feeRecipient: marketplaceV2FeeRecipient,
         feeBps: secondaryMarketplaceFeeBps,
+        paymentTokenFactoryAddress,
+        allowedPaymentTokens: marketplaceV2AllowedPaymentTokens,
         siteNativeTokenAddress: marketplaceV2SiteNativeTokenAddress,
         siteNativeTokenFeeBps: marketplaceV2SiteNativeTokenFeeBps,
+        hasPaymentTokenFactoryAddress: hasMarketplaceV2PaymentTokenFactoryAddress,
         hasSiteNativeTokenAddress: hasMarketplaceV2SiteNativeTokenAddress,
         hasSiteNativeTokenFeeBps: hasMarketplaceV2SiteNativeTokenFeeBps,
       }
@@ -921,8 +1193,8 @@ async function main() {
     );
 
     // Wire deployers to factory (R5 — deployer access control).
-    // Each deployer restricts deploy() to msg.sender == factory, so we call initFactory()
-    // on both deployers right after the factory is live. initFactory() is callable only once.
+    // initFactory() is callable once by the deployer initializer, and deploy()
+    // is then restricted to msg.sender == factory.
     const erc721DeployerContractData = compiledContracts["ERC721CollectionDeployer"];
     const erc1155DeployerContractData = compiledContracts["ERC1155CollectionDeployer"];
     if (erc721DeployerContractData) {
@@ -953,24 +1225,53 @@ async function main() {
     console.log("Collections are created later through CollectionFactory.createCollection(...).");
   }
 
-  if (deploymentTargets.includes("PaymentTokenFactory")) {
-    let contractData = compiledContracts["PaymentTokenFactory"];
-    if (!contractData) {
-      throw new Error("PaymentTokenFactory contract was not found in compiled contracts.");
-    }
-
-    let constructorArgs = [paymentTokenFactoryOwner];
-
-    const deployedPaymentTokenFactory = await deployContract(wallet, "PaymentTokenFactory", contractData, constructorArgs);
-    upsertVerificationManifestEntry(verificationManifest, "PaymentTokenFactory", {
-      address: deployedPaymentTokenFactory.address,
-      deployBlockNumber: deployedPaymentTokenFactory.deployBlockNumber,
-      contractName: "PaymentTokenFactory",
-      verificationContract: buildVerificationContractId(contractData, "PaymentTokenFactory"),
-      constructorArgs,
-    });
-    console.log("ERC-20 payment tokens are created later through PaymentTokenFactory.createPaymentToken(...).");
-  }
+  await verifyDeployedOwners({
+    provider,
+    compiledContracts,
+    verificationManifest,
+    ownerExpectations: [
+      {
+        deploymentAlias: "Marketplace",
+        abiContractName: "Marketplace",
+        expectedOwner: marketplaceOwner,
+      },
+      {
+        deploymentAlias: "PaymentTokenFactory",
+        abiContractName: "PaymentTokenFactory",
+        expectedOwner: paymentTokenFactoryOwner,
+      },
+      {
+        deploymentAlias: "MarketplaceV2",
+        abiContractName: "MarketplaceV2",
+        expectedOwner: marketplaceV2Owner,
+      },
+      {
+        deploymentAlias: "MarketplaceSecondaryERC721",
+        abiContractName: "MarketplaceSecondaryERC721",
+        expectedOwner: marketplaceV2Owner,
+      },
+      {
+        deploymentAlias: "MarketplaceSecondaryERC1155",
+        abiContractName: "MarketplaceSecondaryERC1155",
+        expectedOwner: marketplaceV2Owner,
+      },
+      {
+        deploymentAlias: "MarketplacePrimaryProxyAdmin",
+        abiContractName: "ProxyAdmin",
+        expectedOwner: marketplacePrimaryProxyAdminOwner,
+      },
+      {
+        deploymentAlias: "MarketplacePrimaryProxy",
+        abiContractName: "MarketplacePrimaryUpgradeable",
+        expectedOwner: marketplaceOwner,
+      },
+      {
+        deploymentAlias: "CollectionFactory",
+        abiContractName: "CollectionFactory",
+        expectedOwner: factoryOwner,
+      },
+    ],
+  });
 
   // Convert ABIs to TypeScript and save them to the ABI directory
 

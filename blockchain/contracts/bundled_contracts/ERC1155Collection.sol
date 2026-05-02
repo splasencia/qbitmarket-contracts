@@ -3,10 +3,10 @@ pragma solidity ^0.8.28;
 
 // File: ERC1155Collection.sol
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**
@@ -110,7 +110,7 @@ abstract contract Ownable is Context {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/security/Pausable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/security/Pausable.sol
 // OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)
 
 /**
@@ -212,13 +212,13 @@ abstract contract Pausable is Context {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/ERC1155.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC1155/ERC1155.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC1155/IERC1155.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 /**
@@ -355,7 +355,7 @@ interface IERC1155 is IERC165 {
     ) external;
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
 // OpenZeppelin Contracts (last updated v4.5.0) (token/ERC1155/IERC1155Receiver.sol)
 
 /**
@@ -410,7 +410,7 @@ interface IERC1155Receiver is IERC165 {
     ) external returns (bytes4);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol
 // OpenZeppelin Contracts v4.4.1 (token/ERC1155/extensions/IERC1155MetadataURI.sol)
 
 /**
@@ -429,7 +429,7 @@ interface IERC1155MetadataURI is IERC1155 {
     function uri(uint256 id) external view returns (string memory);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Address.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Address.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
 
 /**
@@ -672,7 +672,7 @@ library Address {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/ERC165.sol)
 
 /**
@@ -1184,7 +1184,7 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC1155/extensions/ERC1155Supply.sol)
 
 /**
@@ -1245,10 +1245,10 @@ abstract contract ERC1155Supply is ERC1155 {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/common/ERC2981.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/common/ERC2981.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/common/ERC2981.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC2981.sol)
 
 /**

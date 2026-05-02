@@ -3,10 +3,10 @@ pragma solidity ^0.8.28;
 
 // File: PaymentToken.sol
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**
@@ -110,10 +110,10 @@ abstract contract Ownable is Context {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/ERC20.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
 /**
@@ -190,7 +190,7 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
 
 /**

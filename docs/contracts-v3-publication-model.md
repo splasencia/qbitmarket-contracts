@@ -9,7 +9,7 @@ publication for the v3 contracts work.
 
 Path in this workspace:
 
-- `/home/sergio/dev/worktrees/qbitmarket-v3-architecture`
+- `<private-monorepo>`
 
 Purpose:
 
@@ -25,7 +25,7 @@ This repository remains the source of truth for active implementation work.
 
 Expected local path:
 
-- `/home/sergio/dev/linuxgit/qbitmarket-contracts`
+- `<public-contracts-repo>`
 
 Purpose:
 
@@ -149,14 +149,14 @@ Use the private helper script from the monorepo root:
 
 ```bash
 scripts/export_public_contracts.sh \
-  --public-repo /home/sergio/dev/linuxgit/qbitmarket-contracts
+  --public-repo <public-contracts-repo>
 ```
 
 The command is dry-run by default. To apply the default safe surface:
 
 ```bash
 scripts/export_public_contracts.sh \
-  --public-repo /home/sergio/dev/linuxgit/qbitmarket-contracts \
+  --public-repo <public-contracts-repo> \
   --apply
 ```
 
@@ -165,7 +165,7 @@ explicitly:
 
 ```bash
 scripts/export_public_contracts.sh \
-  --public-repo /home/sergio/dev/linuxgit/qbitmarket-contracts \
+  --public-repo <public-contracts-repo> \
   --include-deployment-tooling \
   --apply
 ```
@@ -179,7 +179,7 @@ it explicitly:
 
 ```bash
 scripts/export_public_contracts.sh \
-  --public-repo /home/sergio/dev/linuxgit/qbitmarket-contracts \
+  --public-repo <public-contracts-repo> \
   --include-audit-evidence \
   --apply
 ```
@@ -192,9 +192,9 @@ tests used to justify the automated-audit findings.
 Then review the public repository before committing:
 
 ```bash
-git -C /home/sergio/dev/linuxgit/qbitmarket-contracts status --short
-git -C /home/sergio/dev/linuxgit/qbitmarket-contracts diff --stat
-git -C /home/sergio/dev/linuxgit/qbitmarket-contracts diff
+git -C <public-contracts-repo> status --short
+git -C <public-contracts-repo> diff --stat
+git -C <public-contracts-repo> diff
 ```
 
 The script intentionally refuses to write into a dirty public repository unless

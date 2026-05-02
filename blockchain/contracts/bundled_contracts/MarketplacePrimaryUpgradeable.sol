@@ -3,16 +3,16 @@ pragma solidity ^0.8.28;
 
 // File: MarketplacePrimaryUpgradeable.sol
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol
+// File: ../app/node_modules/@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol
+// File: ../app/node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol
+// File: ../app/node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (proxy/utils/Initializable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol
+// File: ../app/node_modules/@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
 
 /**
@@ -539,7 +539,7 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable {
     uint256[49] private __gap;
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol
+// File: ../app/node_modules/@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol
 // OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)
 
 /**
@@ -652,7 +652,7 @@ abstract contract PausableUpgradeable is Initializable, ContextUpgradeable {
     uint256[49] private __gap;
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol
+// File: ../app/node_modules/@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (security/ReentrancyGuard.sol)
 
 /**
@@ -739,10 +739,10 @@ abstract contract ReentrancyGuardUpgradeable is Initializable {
     uint256[49] private __gap;
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC2981.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 /**
@@ -785,16 +785,16 @@ interface IERC2981 is IERC165 {
     ) external view returns (address receiver, uint256 royaltyAmount);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol
+// File: ../app/node_modules/@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol
 // OpenZeppelin Contracts (last updated v4.8.3) (proxy/transparent/ProxyAdmin.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol
+// File: ../app/node_modules/@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (proxy/transparent/TransparentUpgradeableProxy.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol
+// File: ../app/node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol
 // OpenZeppelin Contracts (last updated v4.7.0) (proxy/ERC1967/ERC1967Proxy.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/proxy/Proxy.sol
+// File: ../app/node_modules/@openzeppelin/contracts/proxy/Proxy.sol
 // OpenZeppelin Contracts (last updated v4.6.0) (proxy/Proxy.sol)
 
 /**
@@ -879,10 +879,10 @@ abstract contract Proxy {
     function _beforeFallback() internal virtual {}
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol
+// File: ../app/node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (proxy/ERC1967/ERC1967Upgrade.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/proxy/beacon/IBeacon.sol
+// File: ../app/node_modules/@openzeppelin/contracts/proxy/beacon/IBeacon.sol
 // OpenZeppelin Contracts v4.4.1 (proxy/beacon/IBeacon.sol)
 
 /**
@@ -897,7 +897,7 @@ interface IBeacon {
     function implementation() external view returns (address);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC1967.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC1967.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC1967.sol)
 
 /**
@@ -922,7 +922,7 @@ interface IERC1967 {
     event BeaconUpgraded(address indexed beacon);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/draft-IERC1822.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/draft-IERC1822.sol
 // OpenZeppelin Contracts (last updated v4.5.0) (interfaces/draft-IERC1822.sol)
 
 /**
@@ -941,7 +941,7 @@ interface IERC1822Proxiable {
     function proxiableUUID() external view returns (bytes32);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Address.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Address.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
 
 /**
@@ -1184,7 +1184,7 @@ library Address {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/StorageSlot.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/StorageSlot.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/StorageSlot.sol)
 // This file was procedurally generated from scripts/generate/templates/StorageSlot.js.
 
@@ -1678,10 +1678,10 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**

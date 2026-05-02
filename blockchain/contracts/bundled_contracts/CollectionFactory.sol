@@ -3,10 +3,10 @@ pragma solidity ^0.8.28;
 
 // File: CollectionFactory.sol
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**

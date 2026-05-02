@@ -3,10 +3,10 @@ pragma solidity ^0.8.28;
 
 // File: ERC721Collection.sol
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**
@@ -110,7 +110,7 @@ abstract contract Ownable is Context {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/security/Pausable.sol
+// File: ../app/node_modules/@openzeppelin/contracts/security/Pausable.sol
 // OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)
 
 /**
@@ -212,16 +212,16 @@ abstract contract Pausable is Context {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/extensions/ERC721URIStorage.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/ERC721.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/IERC721.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 /**
@@ -371,7 +371,7 @@ interface IERC721 is IERC165 {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC721/IERC721Receiver.sol)
 
 /**
@@ -397,7 +397,7 @@ interface IERC721Receiver {
     ) external returns (bytes4);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol
 // OpenZeppelin Contracts v4.4.1 (token/ERC721/extensions/IERC721Metadata.sol)
 
 /**
@@ -421,7 +421,7 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Address.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Address.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
 
 /**
@@ -664,10 +664,10 @@ library Address {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/Strings.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/Strings.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Strings.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/math/Math.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/math/Math.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/math/Math.sol)
 
 /**
@@ -1005,7 +1005,7 @@ library Math {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol
 // OpenZeppelin Contracts (last updated v4.8.0) (utils/math/SignedMath.sol)
 
 /**
@@ -1125,7 +1125,7 @@ library Strings {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/ERC165.sol)
 
 /**
@@ -1605,13 +1605,13 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC4906.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC4906.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC4906.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC165.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (interfaces/IERC165.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC721.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC721.sol
 // OpenZeppelin Contracts v4.4.1 (interfaces/IERC721.sol)
 
 /// @title EIP-721 Metadata Update Extension
@@ -1694,10 +1694,10 @@ abstract contract ERC721URIStorage is IERC4906, ERC721 {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/token/common/ERC2981.sol
+// File: ../app/node_modules/@openzeppelin/contracts/token/common/ERC2981.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/common/ERC2981.sol)
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
+// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC2981.sol)
 
 /**
@@ -1819,7 +1819,7 @@ abstract contract ERC2981 is IERC2981, ERC165 {
     }
 }
 
-// File: ../../../../home/sergio/dev/worktrees/qbitmarket-v3-architecture/blockchain/node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol
+// File: ../app/node_modules/@openzeppelin/contracts/utils/cryptography/MerkleProof.sol
 // OpenZeppelin Contracts (last updated v4.9.2) (utils/cryptography/MerkleProof.sol)
 
 /**
