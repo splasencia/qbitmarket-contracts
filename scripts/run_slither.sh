@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BLOCKCHAIN_DIR="$ROOT_DIR/blockchain"
-OUTPUT_DIR="${SLITHER_OUTPUT_DIR:-/tmp/qbitmarket-contracts-v3-slither}"
+OUTPUT_DIR="${SLITHER_OUTPUT_DIR:-/tmp/qbitmarket-contract-slither}"
 ALLOW_FINDINGS="${SLITHER_ALLOW_FINDINGS:-0}"
 
 mkdir -p "$OUTPUT_DIR"

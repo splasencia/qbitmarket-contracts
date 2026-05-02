@@ -62,7 +62,7 @@ Observed result:
 - Slither's compile step emits code-size warnings for these source entrypoints
   under its unoptimized analysis invocation. The deployment-size gate remains
   the bundled, optimizer/via-IR measurement documented in
-  `docs/contracts-v3-architecture.md`.
+  `docs/contract-architecture.md`.
 
 ### Initial triage
 

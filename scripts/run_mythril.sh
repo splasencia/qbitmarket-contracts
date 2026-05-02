@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BLOCKCHAIN_DIR="$ROOT_DIR/blockchain"
-OUTPUT_DIR="${MYTHRIL_OUTPUT_DIR:-/tmp/qbitmarket-contracts-v3-mythril}"
+OUTPUT_DIR="${MYTHRIL_OUTPUT_DIR:-/tmp/qbitmarket-contract-mythril}"
 DOCKER_IMAGE="${MYTHRIL_DOCKER_IMAGE:-mythril/myth}"
 ALLOW_FINDINGS="${MYTHRIL_ALLOW_FINDINGS:-0}"
 SKIP_COMPILE="${MYTHRIL_SKIP_COMPILE:-0}"

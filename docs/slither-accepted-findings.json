@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "policy": "All Slither detector families emitted by the contracts v3 audit-evidence workflow must be listed here. New detector families fail the triage gate until they are fixed, covered by regression tests, or explicitly accepted with rationale.",
+  "policy": "All Slither detector families emitted by the contracts audit-evidence workflow must be listed here. New detector families fail the triage gate until they are fixed, covered by regression tests, or explicitly accepted with rationale.",
   "acceptedChecks": {
     "arbitrary-send-eth": {
       "status": "accepted",
@@ -56,7 +56,7 @@
       "impacts": ["Informational"],
       "rationale": "The split ERC-721 and ERC-1155 entrypoints share a centralized base for storage and helper discipline. Per-entrypoint analysis sees opposite-standard helpers as unused.",
       "evidence": [
-        "docs/contracts-v3-architecture.md#secondary-split-storage-and-address-semantics"
+        "docs/contract-architecture.md#secondary-split-storage-and-address-semantics"
       ]
     },
     "uninitialized-state": {
@@ -64,7 +64,7 @@
       "impacts": ["High"],
       "rationale": "Per-entrypoint analysis sees opposite-standard mappings as uninitialized/unused. Those mappings are used by the other split entrypoint and by the legacy compatibility wrapper; centralized storage is intentional.",
       "evidence": [
-        "docs/contracts-v3-architecture.md#secondary-split-storage-and-address-semantics"
+        "docs/contract-architecture.md#secondary-split-storage-and-address-semantics"
       ]
     },
     "constable-states": {
@@ -72,7 +72,7 @@
       "impacts": ["Optimization"],
       "rationale": "Per-entrypoint analysis sees opposite-standard counters as constant candidates. They are mutable in the other split entrypoint and legacy compatibility wrapper.",
       "evidence": [
-        "docs/contracts-v3-architecture.md#secondary-split-storage-and-address-semantics"
+        "docs/contract-architecture.md#secondary-split-storage-and-address-semantics"
       ]
     }
   }
