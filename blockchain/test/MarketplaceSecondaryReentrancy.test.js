@@ -31,7 +31,7 @@ describe("Marketplace secondary reentrancy hardening", function () {
   }
 
   it("blocks ERC-20 offer escrow reentrancy while preserving the outer ERC-721 offer", async function () {
-    const { marketplace, seller, bidder } = await deployERC721MarketplaceFixture();
+    const { marketplace, owner, seller, bidder } = await deployERC721MarketplaceFixture();
     const marketplaceAddress = await marketplace.getAddress();
 
     const ReentrantERC721 = await ethers.getContractFactory(REENTRANT_ERC721_FQN);
@@ -43,6 +43,7 @@ describe("Marketplace secondary reentrancy hardening", function () {
     const paymentToken = await ReentrantERC20.deploy();
     await paymentToken.waitForDeployment();
     const paymentTokenAddress = await paymentToken.getAddress();
+    await marketplace.connect(owner).setPaymentTokenAllowed(paymentTokenAddress, true);
 
     const tokenId = 101;
     const offerAmount = ethers.parseEther("1");
