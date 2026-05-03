@@ -206,3 +206,42 @@ Coverage:
 
 The invariant rules and current boundaries are documented in
 `docs/invariant-tests.md`.
+
+## Lifecycle edge-case regression tests
+
+Command:
+
+```sh
+cd blockchain
+TMPDIR=/tmp \
+PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000001 \
+PRIVATE_KEY_QAN=0x0000000000000000000000000000000000000000000000000000000000000001 \
+npx hardhat test test/MarketplaceSecondaryLifecycleEdges.test.js
+```
+
+Coverage:
+
+- ERC-721 listing creation/update authorization, duplicate active listing
+  rejection, invalid price rejection, and post-cancel update rejection
+- ERC-721 listing purchase guards for cancelled, expired, already executed,
+  underpaid, overpaid, self-purchase, approval-revoked, and ownership-lost
+  states
+- native payout failure behavior when a fee recipient rejects ETH; the buy
+  reverts and leaves listing state plus NFT ownership unchanged
+- ERC-721 offer guards for zero amount, owner-as-bidder, cancelled, expired,
+  reused, and non-owner acceptance paths
+- ERC-20 offer escrow failures for insufficient balance and missing allowance
+- ERC-1155 listing and offer guards for zero amounts, insufficient balance,
+  approval removal, bad payment, cancelled/expired/reused state, and double
+  execution
+- ERC-721 and ERC-1155 auction guards for bad reserve/increment/duration or
+  amount, seller bidding, below-reserve bids, insufficient native payment,
+  minimum-increment enforcement, cancellation with bids, early settlement, and
+  double settlement
+- pause behavior for critical ERC-721 writes, while cancellation remains
+  available during pause
+
+Observed result:
+
+- local full Hardhat suite: 43 passing
+- new lifecycle edge-case suite: 10 passing

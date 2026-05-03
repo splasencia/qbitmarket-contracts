@@ -19,6 +19,17 @@ PRIVATE_KEY_QAN=0x00000000000000000000000000000000000000000000000000000000000000
 npx hardhat test test/MarketplaceSecondaryInvariants.test.js
 ```
 
+Run the lifecycle edge-case suite when reviewing the marketplace state-machine
+guards:
+
+```sh
+cd blockchain
+TMPDIR=/tmp \
+PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000001 \
+PRIVATE_KEY_QAN=0x0000000000000000000000000000000000000000000000000000000000000001 \
+npx hardhat test test/MarketplaceSecondaryLifecycleEdges.test.js
+```
+
 The full public Hardhat release suite should also pass:
 
 ```sh
@@ -57,10 +68,27 @@ and state transitions:
 - external ERC-20s before and after allowlisting
 - allowed and rejected fee basis-point values
 
-The suite intentionally focuses on high-value invariants rather than duplicating
-all scenario tests. Scenario tests still cover invalidation, reentrancy,
-upgradeability, pause behavior, collection ownership, and collection deployer
-initialization.
+The invariant suite intentionally focuses on high-value rules rather than
+duplicating all scenario tests. The companion lifecycle suite covers the main
+state-machine edge cases:
+
+- unauthorized or invalid ERC-721 listing creation and updates
+- cancelled, expired, already executed, underpaid, overpaid, self-purchase,
+  approval-revoked, and ownership-lost ERC-721 listing purchases
+- native payout failure when a fee recipient rejects ETH, with listing state and
+  NFT ownership preserved by revert semantics
+- cancelled, expired, reused, self, unauthorized, and unapproved ERC-721 offers
+- ERC-20 offer creation failures for insufficient allowance or balance
+- ERC-1155 listing amount, balance, approval, payment, and double-execution
+  checks
+- ERC-1155 offer amount, cancellation, expiry, reuse, self, and approval checks
+- ERC-721 and ERC-1155 auction reserve, increment, payment, cancellation,
+  early-settlement, and double-settlement checks
+- pause behavior: critical create/buy/accept/auction actions revert while
+  cancellations remain available so users can clear stale intent
+
+Other scenario tests still cover invalidation, reentrancy, upgradeability,
+collection ownership, and collection deployer initialization.
 
 ## Current Boundaries
 

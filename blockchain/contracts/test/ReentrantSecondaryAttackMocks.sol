@@ -130,3 +130,9 @@ contract ReentrantERC1155Mock is ERC1155 {
         attackEnabled = false;
     }
 }
+
+contract RejectingEthReceiver {
+    receive() external payable {
+        revert("reject native");
+    }
+}

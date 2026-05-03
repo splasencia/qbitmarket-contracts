@@ -166,6 +166,11 @@ const sourceFiles = [
     "docs/invariant-tests.md",
     "docs/operational-authority.md",
     "docs/publication-model.md",
+    "blockchain/test/MarketplaceSecondaryInvalidation.test.js",
+    "blockchain/test/MarketplaceSecondaryInvariants.test.js",
+    "blockchain/test/MarketplaceSecondaryLifecycleEdges.test.js",
+    "blockchain/test/MarketplaceSecondaryPaymentAllowlist.test.js",
+    "blockchain/test/MarketplaceSecondaryReentrancy.test.js",
   ]),
 ];
 
