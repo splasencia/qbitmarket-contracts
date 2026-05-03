@@ -92,59 +92,106 @@ function pdfEscape(value) {
     .replaceAll(")", "\\)");
 }
 
-function buildSimplePdf(title, lines) {
+function buildSimplePdf(title, lines, manifest) {
   const pageWidth = 612;
   const pageHeight = 792;
   const marginX = 54;
   const marginY = 54;
-  const lineHeight = 14;
-  const bodySize = 10;
-  const titleSize = 16;
+  const lhBody = 14;
+  const lhMono = 13;
   const pages = [];
   let commands = [];
   let y = pageHeight - marginY;
+  let inIdentity = false;
+  let inResults = false;
+  let nextIsNotice = false;
 
   function newPage() {
-    if (commands.length > 0) {
-      pages.push(commands);
-    }
+    if (commands.length > 0) pages.push(commands);
     commands = [];
     y = pageHeight - marginY;
   }
 
-  function drawLine(text, options = {}) {
-    const size = options.title ? titleSize : bodySize;
-    const font = options.bold ? "/F2" : "/F1";
-    const indent = options.indent || 0;
-
-    if (y < marginY) newPage();
-    commands.push(`BT ${font} ${size} Tf ${marginX + indent} ${y} Td (${pdfEscape(text)}) Tj ET`);
-    y -= options.title ? 22 : lineHeight;
+  function ensureSpace(needed) {
+    if (y - needed < marginY) newPage();
   }
 
-  drawLine(title, { title: true, bold: true });
+  function txt(str, x, yPos, font, size) {
+    commands.push(`BT ${font} ${size} Tf ${x} ${yPos} Td (${pdfEscape(str)}) Tj ET`);
+  }
+
+  function hRule(yPos) {
+    commands.push(`q 0.80 G 0.4 w ${marginX} ${yPos} m ${pageWidth - marginX} ${yPos} l S Q`);
+  }
+
+  function amberBar(xPos, yBottom, height) {
+    commands.push(`q 0.94 0.71 0.16 rg ${xPos} ${yBottom} 3 ${height} re f Q`);
+  }
+
+  // Title and subtitle
+  ensureSpace(44);
+  txt(title, marginX, y, "/F2", 17);
+  y -= 21;
+  const genDate = manifest?.generatedAt ? new Date(manifest.generatedAt).toISOString().slice(0, 10) : "";
+  const sc = shortHash(manifest?.commit || "unknown");
+  const subtitle = genDate ? `${genDate}${sc !== "unknown" ? "   commit " + sc : ""}` : "";
+  if (subtitle) {
+    txt(subtitle, marginX, y, "/F1", 9);
+    y -= 13;
+  }
+  y -= 10;
+
   for (const item of lines) {
     if (item === "") {
+      inIdentity = false;
+      inResults = false;
+      nextIsNotice = false;
       y -= 7;
       continue;
     }
 
-    const isHeading = item.startsWith("## ");
-    const isBullet = item.startsWith("- ");
-    const text = isHeading ? item.slice(3) : isBullet ? item.slice(2) : item;
-    const prefix = isBullet ? "- " : "";
-    const indent = isBullet ? 14 : 0;
-    const width = isBullet ? 82 : 88;
-
-    for (const [lineIndex, wrapped] of wrapText(text, width).entries()) {
-      drawLine(`${lineIndex === 0 ? prefix : "  "}${wrapped}`, {
-        bold: isHeading,
-        indent,
-      });
+    if (item.startsWith("## ")) {
+      const heading = item.slice(3);
+      inIdentity = heading === "Verification Identity";
+      inResults = heading === "Automated Results";
+      nextIsNotice = heading.startsWith("Important");
+      y -= 8;
+      ensureSpace(26);
+      txt(heading.toUpperCase(), marginX, y, "/F2", 11);
+      y -= 15;
+      hRule(y + 2);
+      y -= 6;
+      continue;
     }
 
-    if (isHeading) y -= 3;
+    const isBullet = item.startsWith("- ");
+    const rawText = isBullet ? item.slice(2) : item;
+    const isNotice = nextIsNotice && !isBullet;
+    const isMono = (inIdentity || inResults) && !isBullet;
+
+    const font = isMono ? "/F3" : "/F1";
+    const size = isMono ? 9 : 10;
+    const lh = isMono ? lhMono : lhBody;
+    const wrapW = isBullet ? 80 : isMono ? 82 : 88;
+    const indentX = isBullet ? 12 : isNotice ? 10 : isMono ? 4 : 0;
+
+    const wrapped = wrapText(rawText, wrapW);
+    const blockH = wrapped.length * lh;
+
+    ensureSpace(blockH + (isNotice ? 6 : 0));
+
+    if (isNotice) {
+      amberBar(marginX, y - blockH + lh - 2, blockH + 4);
+    }
+
+    for (const [i, line] of wrapped.entries()) {
+      txt(`${i === 0 && isBullet ? "- " : i > 0 ? "  " : ""}${line}`, marginX + indentX, y, font, size);
+      y -= lh;
+    }
+
+    if (isNotice) nextIsNotice = false;
   }
+
   if (commands.length > 0) pages.push(commands);
 
   const objects = [];
@@ -155,8 +202,9 @@ function buildSimplePdf(title, lines) {
 
   const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
   const pagesId = addObject("PAGES_PLACEHOLDER");
-  const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-  const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  const f1Id = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const f2Id = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  const f3Id = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>");
   const pageIds = [];
 
   for (const pageCommands of pages) {
@@ -164,7 +212,7 @@ function buildSimplePdf(title, lines) {
     const contentId = addObject(`<< /Length ${Buffer.byteLength(stream, "utf8")} >>\nstream\n${stream}\nendstream`);
     const pageId = addObject(
       `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
-        `/Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`
+        `/Resources << /Font << /F1 ${f1Id} 0 R /F2 ${f2Id} 0 R /F3 ${f3Id} 0 R >> >> /Contents ${contentId} 0 R >>`
     );
     pageIds.push(pageId);
   }
@@ -409,7 +457,7 @@ const pdfPath = path.join(outputDir, `${baseName}.pdf`);
 
 fs.writeFileSync(markdownPath, markdown);
 fs.writeFileSync(htmlPath, html);
-fs.writeFileSync(pdfPath, buildSimplePdf(title, lines));
+fs.writeFileSync(pdfPath, buildSimplePdf(title, lines, manifest));
 
 console.log(`Wrote ${markdownPath}`);
 console.log(`Wrote ${htmlPath}`);
