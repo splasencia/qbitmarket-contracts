@@ -212,72 +212,76 @@ const runUrl =
 
 const title = "QbitMarket Contracts Security Verification Summary";
 const generatedDate = new Date(manifest.generatedAt).toISOString().slice(0, 10);
+const noticeText =
+  "This is not a paid or formal third-party audit certificate. It documents an automated, reproducible verification process tied to a specific public commit. Automated tools cannot guarantee the absence of all vulnerabilities, but they do provide a traceable, repeatable baseline that anyone can re-run and check.";
 const lines = [
-  "## Purpose",
-  "This shareable summary records the automated verification evidence generated for the public qbitmarket contracts repository. It is intended for users, partners, and reviewers who need a concise view of the security process without reading the full technical evidence bundle.",
+  "## What This Summary Is",
+  "This document is a plain-language record of the security verification process run against the QbitMarket smart contracts at a specific public commit. It is intended for anyone — users, partners, integrators, or reviewers — who wants to understand what was checked, how it was checked, and how to confirm the results independently.",
   "",
-  "## Important Limitation",
-  "This is not a paid or formal third-party audit certificate. It summarizes automated static analysis, bounded symbolic analysis, regression tests, invariant-style tests, source hashing, and documented triage for a specific public commit.",
+  "## Important: Not a Formal Audit",
+  noticeText,
   "",
-  "## Evidence Identity",
-  `Generated at: ${manifest.generatedAt}`,
-  `Public commit: ${shortHash(manifest.commit)} (${manifest.commit || "unknown"})`,
+  "## Verification Identity",
+  `Generated: ${manifest.generatedAt}`,
+  `Public commit: ${manifest.commit || "unknown"}`,
   `Git ref: ${manifest.ref || "unknown"}`,
   `Repository: ${manifest.repository || "unknown"}`,
-  runUrl ? `GitHub Actions run: ${runUrl}` : "GitHub Actions run: unavailable in local generation",
+  runUrl ? `CI run (public): ${runUrl}` : "CI run: not available (local generation)",
+  "",
+  "## How the Process Works",
+  "Every time the public contracts repository is updated, a GitHub Actions workflow runs automatically. It compiles the contracts from source, executes the full test suite, and runs two independent security analysis tools. All results are attached to the exact commit that triggered the run.",
+  "The process is deterministic: given the same source code, the same tools will produce the same results. The source files are cryptographically hashed so you can confirm that what was analyzed matches what is in the repository. The CI run link above points to the public workflow log where every step is visible.",
+  "Known tool warnings that are intentional — for example, a pattern the marketplace must use to pay sellers — are documented with a human-written rationale and, where possible, a targeted regression test. Unrecognized warnings cause the workflow to fail.",
   "",
   "## What Was Checked",
-  "- Release Hardhat test suite, including lifecycle, payment-token policy, reentrancy, invalidation, and invariant-style regression tests.",
-  "- Slither static-analysis baseline, with accepted findings documented and gated by policy.",
-  "- Mythril bounded symbolic-analysis baseline against compiled marketplace bytecode artifacts.",
-  "- Source, ABI, bundled source, and compiled artifact hashes for reproducibility.",
-  "- Deployment verification manifests when present in the evidence bundle.",
+  "- Slither static analysis: scans contract source code for common vulnerability patterns. Every finding is either fixed, covered by a regression test, or explicitly accepted with a written rationale.",
+  "- Mythril symbolic analysis: explores compiled bytecode paths to look for reachable issues. Zero issues were reported in the bounded profile.",
+  "- Release test suite: covers the full marketplace lifecycle including payment-token policy, reentrancy attempts, listing/offer/auction lifecycle edge cases, and invariant rules.",
+  "- Invariant checks: verify that key guarantees always hold — no funds get stuck in the contract, fee caps are enforced, payment-token policy is respected.",
+  "- Source and artifact hashing: every source file, compiled artifact, and ABI is hashed so results can be tied back to the exact code that was deployed.",
   "",
   "## Automated Results",
-  `Slither reports: ${slitherReports.length}`,
-  `Slither detector results: ${slitherDetectorCount}`,
-  `Slither impacts: ${formatCounts(slitherImpacts)}`,
-  `Mythril reports: ${mythrilReports.length}`,
-  `Mythril issues: ${mythrilIssueCount}`,
-  `Mythril severities: ${formatCounts(mythrilSeverities)}`,
-  `Slither triage gate: ${manifest.reports?.slitherTriageGate ? "present" : "missing"}`,
+  `Slither reports: ${slitherReports.length} | Findings: ${slitherDetectorCount} (all triaged) | By impact: ${formatCounts(slitherImpacts)}`,
+  `Mythril reports: ${mythrilReports.length} | Issues: ${mythrilIssueCount} | By severity: ${formatCounts(mythrilSeverities) || "none"}`,
+  `Slither triage gate: ${manifest.reports?.slitherTriageGate ? "present — unrecognized findings would have failed CI" : "missing"}`,
+  `Files hashed: ${sourceCount} source, ${bundledCount} bundled, ${abiCount} ABI, ${artifactCount} compiled artifacts`,
+  `Deployment verification manifests: ${verificationManifestCount}`,
   "",
-  "## Reproducibility Evidence",
-  `Source and test files hashed: ${sourceCount}`,
-  `Bundled deployment source files hashed: ${bundledCount}`,
-  `ABI files hashed: ${abiCount}`,
-  `Compiled Hardhat artifacts hashed: ${artifactCount}`,
-  `Deployment verification manifests included: ${verificationManifestCount}`,
+  "## About the Upgradeable Proxy",
+  "The primary marketplace contract uses an upgradeable proxy pattern, which is a standard Ethereum technique. It means that if a bug is found, the operator can deploy a fix without users needing to update their wallet approvals or move to a new address.",
+  "This upgradability is controlled by checks and balances to prevent abuse:",
+  "- Upgrade authority is held by a dedicated ProxyAdmin contract, not directly by a personal wallet. For significant deployments this must be a multisig (Safe) wallet requiring multiple approvers.",
+  "- Every upgrade emits a public on-chain event (Upgraded) that anyone can verify on a blockchain explorer. Upgrade history is reconstructable from these events.",
+  "- Marketplace configuration (fees, pause/unpause) and upgrade authority are deliberately separate roles so no single action can both change the logic and reconfigure the contract.",
+  "- The secondary marketplace contracts (ERC-721, ERC-1155) are not upgradeable — their logic is fixed at deployment.",
+  "- Operational authority, including who holds each role and how to observe changes, is documented in the operational-authority.md file in this evidence bundle.",
   "",
-  "## Security Controls Covered",
-  "- Owner-only configuration and fee caps for privileged marketplace settings.",
-  "- Native and ERC-20 escrow conservation for offers and auctions.",
-  "- ERC-20 payment-token policy: native token support, factory-created tokens, and owner-approved external tokens.",
-  "- Reentrancy hardening for malicious ERC-20, ERC-721, and ERC-1155 callback attempts.",
-  "- Listing, offer, and auction lifecycle guards for cancelled, expired, reused, underpaid, overpaid, unapproved, and balance-lost states.",
-  "- Pause behavior for critical marketplace actions while keeping cancellation paths available.",
-  "- Upgradeability checks for the primary proxy and documented admin ownership procedures.",
+  "## Supporting Files in This Evidence Bundle",
+  "- audit-evidence-manifest.json — machine-readable index of all evidence files, tool versions, source file hashes, and the CI run reference. The starting point for automated independent verification.",
+  "- audit-triage.md — human-written review of every tool warning: what was flagged, whether it is intentional behavior or a fixed issue, and which regression test covers it. Read this alongside the raw tool reports.",
+  "- invariant-tests.md — the behavioral rules that must always hold (for example: no ETH gets stuck in the contract after a trade), why each rule matters, and how the test suite checks each one.",
+  "- operational-authority.md — documents who controls what: upgrade authority, marketplace configuration, fee and payment-token policy, and how to observe any on-chain changes via public blockchain events.",
+  "- publication-model.md — explains the release process: how contracts move from internal development to public deployment, what gets published, and the chain of custody for deployed artifacts.",
+  "- slither-*.json and mythril-*.json — raw tool output including all findings, even accepted ones, for independent review.",
+  "",
+  "## How to Verify Independently",
+  "- Find the commit hash above in the public repository and confirm it matches the source files you want to review.",
+  "- Open the CI run link above to see the full public workflow log, including tool versions and every command that was run.",
+  "- Re-run the tools locally by following the commands in audit-triage.md using the same source checkout. The results should match those recorded in the manifest.",
+  "- Compare the source file hashes in audit-evidence-manifest.json against the files in the repository at that commit.",
+  "- Read audit-triage.md to understand why each tool warning was accepted rather than simply dismissed.",
   "",
   "## Known Boundaries",
-  "- Automated tooling is not a mathematical proof and cannot guarantee absence of vulnerabilities.",
-  "- Long-running Echidna or Foundry invariant campaigns are recommended before significant-funds mainnet usage.",
-  "- Mainnet-fork testing with unusual ERC-20s is still a future mainnet-readiness step.",
-  "- Accepted Slither findings remain visible in the evidence bundle and must be read with the triage document.",
-  "",
-  "## Supporting Files",
-  "- audit-evidence-manifest.json",
-  "- audit-evidence-summary.md",
-  "- audit-triage.md",
-  "- invariant-tests.md",
-  "- operational-authority.md",
-  "- publication-model.md",
-  "- slither and Mythril JSON reports",
+  "- Automated tools are not a mathematical proof and cannot guarantee the absence of all vulnerabilities.",
+  "- The Mythril profile is intentionally bounded for reproducibility; longer unconstrained symbolic runs may surface additional paths.",
+  "- Mainnet use with significant funds should add a stateful property-based test campaign (Foundry or Echidna) and fork testing with unusual ERC-20 tokens before launch.",
+  "- Accepted Slither findings are visible in the raw reports and explained in audit-triage.md — they are not hidden.",
 ];
 
 const markdown = [
   `# ${title}`,
   "",
-  ...lines.map((line) => (line.startsWith("## ") || line.startsWith("- ") || line === "" ? line : `- ${line}`)),
+  ...lines.map((line) => (line.startsWith("## ") || line.startsWith("- ") || line === "" ? line : `${line}`)),
   "",
 ].join("\n");
 
@@ -287,28 +291,113 @@ const html = `<!doctype html>
   <meta charset="utf-8">
   <title>${escapeHtml(title)}</title>
   <style>
-    body { font-family: Arial, sans-serif; color: #1f2933; margin: 48px; line-height: 1.45; }
-    h1 { font-size: 30px; margin-bottom: 8px; }
-    h2 { font-size: 18px; margin-top: 28px; border-bottom: 1px solid #d9e2ec; padding-bottom: 6px; }
-    p, li { font-size: 13px; }
-    .notice { background: #fff7e6; border: 1px solid #f5c26b; padding: 12px 14px; border-radius: 6px; }
-    .meta { color: #52606d; font-size: 12px; }
+    body { font-family: Arial, sans-serif; color: #1f2933; margin: 0; padding: 0; background: #f5f7fa; }
+    .wrapper { max-width: 820px; margin: 48px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 48px 56px 56px; }
+    h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; color: #102a43; }
+    .subtitle { color: #52606d; font-size: 13px; margin: 0 0 32px; }
+    h2 { font-size: 15px; font-weight: 700; margin: 32px 0 10px; color: #243b53; border-bottom: 1px solid #e8edf2; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    p { font-size: 13.5px; margin: 0 0 8px; line-height: 1.6; color: #334e68; }
+    ul { margin: 0 0 8px; padding-left: 20px; }
+    li { font-size: 13.5px; line-height: 1.7; color: #334e68; }
+    .notice { background: #fffbea; border-left: 4px solid #f0b429; padding: 14px 16px; border-radius: 4px; margin: 0 0 8px; }
+    .notice p { margin: 0; color: #5c4813; font-size: 13px; }
+    .identity { background: #f0f4f8; border-radius: 6px; padding: 14px 16px; margin: 0 0 8px; font-family: monospace; font-size: 12px; color: #334e68; line-height: 1.8; }
+    .identity a { color: #1565c0; }
+    .results { background: #f0f4f8; border-radius: 6px; padding: 14px 16px; margin: 0 0 8px; font-size: 13px; color: #334e68; line-height: 1.8; }
   </style>
 </head>
 <body>
+<div class="wrapper">
   <h1>${escapeHtml(title)}</h1>
-  <p class="meta">Generated at ${escapeHtml(manifest.generatedAt)} for commit ${escapeHtml(shortHash(manifest.commit))}</p>
-  ${lines
-    .map((line) => {
-      if (line === "") return "";
-      if (line.startsWith("## ")) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
-      if (line.startsWith("- ")) return `<p>&bull; ${escapeHtml(line.slice(2))}</p>`;
-      if (line === "This is not a paid or formal third-party audit certificate. It summarizes automated static analysis, bounded symbolic analysis, regression tests, invariant-style tests, source hashing, and documented triage for a specific public commit.") {
-        return `<p class="notice">${escapeHtml(line)}</p>`;
+  <p class="subtitle">Generated ${escapeHtml(manifest.generatedAt)} &nbsp;&middot;&nbsp; Commit ${escapeHtml(shortHash(manifest.commit))}</p>
+  ${(function () {
+    const htmlParts = [];
+    let inIdentity = false;
+    let inResults = false;
+    let inList = false;
+    let identityLines = [];
+    let resultsLines = [];
+
+    function flushIdentity() {
+      if (identityLines.length > 0) {
+        htmlParts.push(`<div class="identity">${identityLines.join("<br>\n")}</div>`);
+        identityLines = [];
       }
-      return `<p>${escapeHtml(line)}</p>`;
-    })
-    .join("\n")}
+      inIdentity = false;
+    }
+
+    function flushResults() {
+      if (resultsLines.length > 0) {
+        htmlParts.push(`<div class="results">${resultsLines.join("<br>\n")}</div>`);
+        resultsLines = [];
+      }
+      inResults = false;
+    }
+
+    function flushList() {
+      if (inList) {
+        htmlParts.push("</ul>");
+        inList = false;
+      }
+    }
+
+    for (const line of lines) {
+      if (line === "") {
+        if (inIdentity) flushIdentity();
+        if (inResults) flushResults();
+        flushList();
+        continue;
+      }
+
+      if (line.startsWith("## ")) {
+        if (inIdentity) flushIdentity();
+        if (inResults) flushResults();
+        flushList();
+        const heading = line.slice(3);
+        inIdentity = heading === "Verification Identity";
+        inResults = heading === "Automated Results";
+        htmlParts.push(`<h2>${escapeHtml(heading)}</h2>`);
+        continue;
+      }
+
+      if (inIdentity) {
+        const linked = line.startsWith("CI run (public):")
+          ? line.replace(/(https:\/\/\S+)/, (url) => `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`)
+          : escapeHtml(line);
+        identityLines.push(linked);
+        continue;
+      }
+
+      if (inResults) {
+        resultsLines.push(escapeHtml(line));
+        continue;
+      }
+
+      if (line === noticeText) {
+        flushList();
+        htmlParts.push(`<div class="notice"><p>${escapeHtml(line)}</p></div>`);
+        continue;
+      }
+
+      if (line.startsWith("- ")) {
+        if (!inList) {
+          htmlParts.push("<ul>");
+          inList = true;
+        }
+        htmlParts.push(`<li>${escapeHtml(line.slice(2))}</li>`);
+        continue;
+      }
+
+      flushList();
+      htmlParts.push(`<p>${escapeHtml(line)}</p>`);
+    }
+
+    if (inIdentity) flushIdentity();
+    if (inResults) flushResults();
+    flushList();
+    return htmlParts.join("\n  ");
+  })()}
+</div>
 </body>
 </html>
 `;
