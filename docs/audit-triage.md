@@ -179,3 +179,30 @@ Residual note:
 - Slither's event-after-transfer warnings remain informational. They are not
   removed by these tests because the project currently preserves event ordering
   unless a separate event-semantics migration is justified.
+
+## Focused invariant tests
+
+Command:
+
+```sh
+cd blockchain
+TMPDIR=/tmp \
+PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000001 \
+PRIVATE_KEY_QAN=0x0000000000000000000000000000000000000000000000000000000000000001 \
+npx hardhat test test/MarketplaceSecondaryInvariants.test.js
+```
+
+Coverage:
+
+- native escrow conservation across ERC-721 and ERC-1155 offers
+- native escrow conservation across ERC-721 and ERC-1155 auctions, including
+  replacement bids and settlement
+- ERC-20 payment-token policy for factory-created, external, and allowlisted
+  tokens
+- ERC-20 offer escrow clearing on cancellation and acceptance
+- primary and secondary platform-fee caps
+- site-native discount fee remaining less than or equal to the standard
+  secondary platform fee
+
+The invariant rules and current boundaries are documented in
+`docs/invariant-tests.md`.

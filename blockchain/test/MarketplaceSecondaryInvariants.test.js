@@ -2,11 +2,14 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 const ERC20_FQN = "contracts/test/ReentrantSecondaryAttackMocks.sol:ReentrantERC20Mock";
+const ERC1155_FQN = "contracts/test/ReentrantSecondaryAttackMocks.sol:ReentrantERC1155Mock";
 const ERC721_FQN = "contracts/test/ReentrantSecondaryAttackMocks.sol:ReentrantERC721Mock";
 const MARKETPLACE_PRIMARY_UPGRADEABLE_FQN =
   "contracts/MarketplacePrimaryUpgradeable.sol:MarketplacePrimaryUpgradeable";
 const MARKETPLACE_SECONDARY_ERC721_FQN =
   "contracts/MarketplaceSecondaryERC721.sol:MarketplaceSecondaryERC721";
+const MARKETPLACE_SECONDARY_ERC1155_FQN =
+  "contracts/MarketplaceSecondaryERC1155.sol:MarketplaceSecondaryERC1155";
 const PAYMENT_TOKEN_FACTORY_FQN = "contracts/PaymentTokenFactory.sol:PaymentTokenFactory";
 const PAYMENT_TOKEN_FQN = "contracts/PaymentToken.sol:PaymentToken";
 const PROXY_ADMIN_FQN = "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol:ProxyAdmin";
@@ -23,6 +26,20 @@ describe("Marketplace focused fuzz and invariants", function () {
 
     const ERC721 = await ethers.getContractFactory(ERC721_FQN);
     const collection = await ERC721.deploy();
+    await collection.waitForDeployment();
+
+    return { owner, feeRecipient, seller, bidder, otherBidder, marketplace, collection };
+  }
+
+  async function deploySecondary1155Fixture() {
+    const [owner, feeRecipient, seller, bidder, otherBidder] = await ethers.getSigners();
+
+    const MarketplaceSecondaryERC1155 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC1155_FQN);
+    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 250);
+    await marketplace.waitForDeployment();
+
+    const ERC1155 = await ethers.getContractFactory(ERC1155_FQN);
+    const collection = await ERC1155.deploy();
     await collection.waitForDeployment();
 
     return { owner, feeRecipient, seller, bidder, otherBidder, marketplace, collection };
@@ -134,6 +151,85 @@ describe("Marketplace focused fuzz and invariants", function () {
     }
   });
 
+  it("preserves native escrow across fuzzed ERC-1155 offer and auction lifecycles", async function () {
+    const { seller, bidder, otherBidder, marketplace, collection } = await deploySecondary1155Fixture();
+    const marketplaceAddress = await marketplace.getAddress();
+    const collectionAddress = await collection.getAddress();
+    const offerCases = [
+      { tokenAmount: 1n, offerAmount: ethers.parseEther("0.03") },
+      { tokenAmount: 2n, offerAmount: ethers.parseEther("0.4") },
+      { tokenAmount: 5n, offerAmount: ethers.parseEther("1.1") },
+    ];
+
+    let tokenId = 500;
+    for (const { tokenAmount, offerAmount } of offerCases) {
+      await collection.mint(seller.address, tokenId, tokenAmount + 2n);
+      await marketplace.connect(bidder)["createERC1155Offer(address,uint256,uint256,address,uint256)"](
+        collectionAddress,
+        tokenId,
+        tokenAmount,
+        ethers.ZeroAddress,
+        offerAmount,
+        { value: offerAmount }
+      );
+      await expectMarketplaceNativeEscrow(marketplace, offerAmount);
+
+      await marketplace.connect(bidder).cancelERC1155Offer(await marketplace.nextERC1155OfferId() - 1n);
+      await expectMarketplaceNativeEscrow(marketplace, 0n);
+      tokenId += 1;
+    }
+
+    for (const { tokenAmount, offerAmount } of offerCases) {
+      await collection.mint(seller.address, tokenId, tokenAmount + 2n);
+      await collection.connect(seller).setApprovalForAll(marketplaceAddress, true);
+      await marketplace.connect(bidder)["createERC1155Offer(address,uint256,uint256,address,uint256)"](
+        collectionAddress,
+        tokenId,
+        tokenAmount,
+        ethers.ZeroAddress,
+        offerAmount,
+        { value: offerAmount }
+      );
+      await expectMarketplaceNativeEscrow(marketplace, offerAmount);
+
+      const offerId = await marketplace.nextERC1155OfferId() - 1n;
+      await marketplace.connect(seller).acceptERC1155Offer(offerId);
+      await expectMarketplaceNativeEscrow(marketplace, 0n);
+      expect(await collection.balanceOf(bidder.address, tokenId)).to.equal(tokenAmount);
+      tokenId += 1;
+    }
+
+    for (const { tokenAmount, offerAmount } of offerCases) {
+      await collection.mint(seller.address, tokenId, tokenAmount + 2n);
+      await collection.connect(seller).setApprovalForAll(marketplaceAddress, true);
+      await marketplace.connect(seller).createERC1155Auction(
+        collectionAddress,
+        tokenId,
+        tokenAmount,
+        ethers.ZeroAddress,
+        offerAmount,
+        ethers.parseEther("0.01"),
+        60
+      );
+
+      const auctionId = await marketplace.nextERC1155AuctionId() - 1n;
+      await marketplace.connect(bidder).placeERC1155AuctionBid(auctionId, offerAmount, { value: offerAmount });
+      await expectMarketplaceNativeEscrow(marketplace, offerAmount);
+
+      const replacementBid = offerAmount + ethers.parseEther("0.05");
+      await marketplace.connect(otherBidder).placeERC1155AuctionBid(auctionId, replacementBid, { value: replacementBid });
+      await expectMarketplaceNativeEscrow(marketplace, replacementBid);
+
+      await ethers.provider.send("evm_increaseTime", [61]);
+      await ethers.provider.send("evm_mine", []);
+      await marketplace.settleERC1155Auction(auctionId);
+
+      await expectMarketplaceNativeEscrow(marketplace, 0n);
+      expect(await collection.balanceOf(otherBidder.address, tokenId)).to.equal(tokenAmount);
+      tokenId += 1;
+    }
+  });
+
   it("preserves ERC-20 payment-token policy across factory, allowlisted, and external tokens", async function () {
     const { owner, seller, bidder, marketplace, collection } = await deploySecondaryFixture();
     const marketplaceAddress = await marketplace.getAddress();
@@ -162,6 +258,7 @@ describe("Marketplace focused fuzz and invariants", function () {
       const paymentToken = await ethers.getContractAt(PAYMENT_TOKEN_FQN, paymentTokenAddress);
 
       await collection.mint(seller.address, tokenId);
+      await collection.connect(seller).setApprovalForAll(marketplaceAddress, true);
       await paymentToken.connect(bidder).approve(marketplaceAddress, offerAmount);
       await marketplace
         .connect(bidder)
@@ -174,6 +271,27 @@ describe("Marketplace focused fuzz and invariants", function () {
       expect(await paymentToken.balanceOf(marketplaceAddress)).to.equal(0n);
       tokenId += 1;
     }
+
+    const settlementAmount = ethers.parseEther("2");
+    const settlementTokenAddress = await paymentTokenFactory
+      .connect(bidder)
+      .createPaymentToken.staticCall("Settlement Token", "SET", 18, settlementAmount * 2n, settlementAmount * 10n);
+    await paymentTokenFactory
+      .connect(bidder)
+      .createPaymentToken("Settlement Token", "SET", 18, settlementAmount * 2n, settlementAmount * 10n);
+    const settlementToken = await ethers.getContractAt(PAYMENT_TOKEN_FQN, settlementTokenAddress);
+
+    await collection.mint(seller.address, tokenId);
+    await collection.connect(seller).setApprovalForAll(marketplaceAddress, true);
+    await settlementToken.connect(bidder).approve(marketplaceAddress, settlementAmount);
+    await marketplace
+      .connect(bidder)
+      ["createOffer(address,uint256,address,uint256)"](collectionAddress, tokenId, settlementTokenAddress, settlementAmount);
+    expect(await settlementToken.balanceOf(marketplaceAddress)).to.equal(settlementAmount);
+    await marketplace.connect(seller).acceptOffer(await marketplace.nextOfferId() - 1n);
+    expect(await settlementToken.balanceOf(marketplaceAddress)).to.equal(0n);
+    expect(await collection.ownerOf(tokenId)).to.equal(bidder.address);
+    tokenId += 1;
 
     const ERC20 = await ethers.getContractFactory(ERC20_FQN);
     const externalToken = await ERC20.deploy();

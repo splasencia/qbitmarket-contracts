@@ -130,6 +130,7 @@ Recommended workflow shape:
   - Slither accepted-finding policy and triage-gate output
   - Mythril JSON reports
   - the human triage document
+  - the invariant-test rule document
   - the verification manifest when tied to a deployment run
 
 Release policy:
@@ -185,9 +186,10 @@ scripts/export_public_contracts.sh \
 ```
 
 This copies the public audit-evidence workflow, Slither/Mythril helper scripts,
-the manifest generator, the triage document, the minimal Hardhat runtime files,
-the Slither accepted-finding policy, and the focused reentrancy and invalidation
-tests used to justify the automated-audit findings.
+the manifest generator, the triage and invariant-test documents, the minimal
+Hardhat runtime files, the Slither accepted-finding policy, and the focused
+reentrancy, invalidation, and invariant tests used to justify the
+automated-audit findings.
 
 Then review the public repository before committing:
 

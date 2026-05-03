@@ -163,6 +163,7 @@ const sourceFiles = [
     "scripts/generate_audit_manifest.js",
     "docs/audit-triage.md",
     "docs/slither-accepted-findings.json",
+    "docs/invariant-tests.md",
     "docs/operational-authority.md",
     "docs/publication-model.md",
   ]),
