@@ -161,6 +161,7 @@ const sourceFiles = [
     "scripts/run_mythril.sh",
     "scripts/check_slither_triage.js",
     "scripts/generate_audit_manifest.js",
+    "scripts/generate_security_summary.js",
     "docs/audit-triage.md",
     "docs/slither-accepted-findings.json",
     "docs/invariant-tests.md",

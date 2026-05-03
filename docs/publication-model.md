@@ -126,6 +126,7 @@ Recommended workflow shape:
   - source commit SHA
   - compiled artifact hashes
   - bundled deployment source hashes
+  - an executive security verification summary as Markdown, HTML, and PDF
   - Slither JSON reports
   - Slither accepted-finding policy and triage-gate output
   - Mythril JSON reports
@@ -187,10 +188,10 @@ scripts/export_public_contracts.sh \
 ```
 
 This copies the public audit-evidence workflow, Slither/Mythril helper scripts,
-the manifest generator, the triage and invariant-test documents, the minimal
-Hardhat runtime files, the Slither accepted-finding policy, and the focused
-reentrancy, invalidation, payment-token policy, invariant, and lifecycle
-edge-case tests used to justify the
+the manifest and executive-summary generators, the triage and invariant-test
+documents, the minimal Hardhat runtime files, the Slither accepted-finding
+policy, and the focused reentrancy, invalidation, payment-token policy,
+invariant, and lifecycle edge-case tests used to justify the
 automated-audit findings.
 
 Then review the public repository before committing:

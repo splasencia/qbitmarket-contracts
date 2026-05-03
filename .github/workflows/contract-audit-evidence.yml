@@ -8,6 +8,7 @@ on:
       - 'blockchain/test/**'
       - 'deployment/scripts/bundle_contracts.*'
       - 'docs/audit-triage.md'
+      - 'docs/invariant-tests.md'
       - 'docs/operational-authority.md'
       - 'docs/publication-model.md'
       - 'docs/slither-accepted-findings.json'
@@ -15,6 +16,7 @@ on:
       - 'scripts/run_slither.sh'
       - 'scripts/check_slither_triage.js'
       - 'scripts/generate_audit_manifest.js'
+      - 'scripts/generate_security_summary.js'
   push:
     paths:
       - '.github/workflows/contract-audit-evidence.yml'
@@ -22,6 +24,7 @@ on:
       - 'blockchain/test/**'
       - 'deployment/scripts/bundle_contracts.*'
       - 'docs/audit-triage.md'
+      - 'docs/invariant-tests.md'
       - 'docs/operational-authority.md'
       - 'docs/publication-model.md'
       - 'docs/slither-accepted-findings.json'
@@ -29,6 +32,7 @@ on:
       - 'scripts/run_slither.sh'
       - 'scripts/check_slither_triage.js'
       - 'scripts/generate_audit_manifest.js'
+      - 'scripts/generate_security_summary.js'
   workflow_dispatch:
 
 concurrency:
@@ -117,8 +121,13 @@ jobs:
             --output "${AUDIT_EVIDENCE_DIR}/audit-evidence-manifest.json" \
             --summary-output "${AUDIT_EVIDENCE_DIR}/audit-evidence-summary.md"
 
+          node scripts/generate_security_summary.js \
+            --manifest "${AUDIT_EVIDENCE_DIR}/audit-evidence-manifest.json" \
+            --output-dir "${AUDIT_EVIDENCE_DIR}"
+
           for doc in \
             docs/audit-triage.md \
+            docs/invariant-tests.md \
             docs/slither-accepted-findings.json \
             docs/operational-authority.md \
             docs/publication-model.md
