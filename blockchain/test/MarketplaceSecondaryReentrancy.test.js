@@ -43,11 +43,11 @@ describe("Marketplace secondary reentrancy hardening", function () {
     const paymentToken = await ReentrantERC20.deploy();
     await paymentToken.waitForDeployment();
     const paymentTokenAddress = await paymentToken.getAddress();
-    await marketplace.connect(owner).setPaymentTokenAllowed(paymentTokenAddress, true);
 
     const tokenId = 101;
     const offerAmount = ethers.parseEther("1");
 
+    await marketplace.connect(owner).setPaymentTokenAllowed(paymentTokenAddress, true);
     await collection.mint(seller.address, tokenId);
     await paymentToken.mint(bidder.address, offerAmount * 2n);
     await paymentToken.connect(bidder).approve(marketplaceAddress, offerAmount * 2n);
