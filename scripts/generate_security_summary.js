@@ -92,21 +92,45 @@ function pdfEscape(value) {
     .replaceAll(")", "\\)");
 }
 
+// Type1 standard fonts only cover printable ASCII + a limited Latin-1 subset.
+// Replace typographic characters that render as blanks or garbage in PDF.
+function pdfSanitize(value) {
+  return String(value)
+    .replace(/—/g, " - ")   // em dash
+    .replace(/–/g, "-")     // en dash
+    .replace(/[‘’]/g, "'")  // curly single quotes
+    .replace(/[“”]/g, '"')  // curly double quotes
+    .replace(/•/g, "-")     // bullet
+    .replace(/[^\x20-\x7e\xa0-\xff]/g, "?"); // remaining non-Latin-1 -> ?
+}
+
 function buildSimplePdf(title, lines, manifest) {
   const pageWidth = 612;
   const pageHeight = 792;
-  const marginX = 54;
+  const marginX = 46;
   const marginY = 54;
-  const lhBody = 14;
+  const textWidth = pageWidth - marginX * 2;   // 520pt usable
+  const lhBody = 15;
   const lhMono = 13;
+  // Vertical rhythm constants.
+  const gapParagraph = 12;     // extra gap for a blank line between paragraphs
+  const gapBeforeHeading = 18; // extra gap above a section heading
+  const gapHeadingToRule = 7;  // heading baseline → rule (tight, rule belongs to heading)
+  const gapRuleToBody = 18;    // rule → first body baseline (breathing room)
+  const bulletGap = 4;         // extra gap between consecutive bullet items
   const pages = [];
   let commands = [];
   let y = pageHeight - marginY;
   let inIdentity = false;
   let inResults = false;
   let nextIsNotice = false;
+  let prevWasBullet = false;
+  // For mono blocks we draw a border stroke AFTER the text (stroke never covers text).
+  let monoBlockStartY = null;
+  let monoLh = lhMono;
 
   function newPage() {
+    flushMonoBorder();
     if (commands.length > 0) pages.push(commands);
     commands = [];
     y = pageHeight - marginY;
@@ -117,19 +141,35 @@ function buildSimplePdf(title, lines, manifest) {
   }
 
   function txt(str, x, yPos, font, size) {
-    commands.push(`BT ${font} ${size} Tf ${x} ${yPos} Td (${pdfEscape(str)}) Tj ET`);
+    commands.push(`BT ${font} ${size} Tf ${x} ${yPos} Td (${pdfEscape(pdfSanitize(str))}) Tj ET`);
   }
 
+  // Light gray horizontal rule.
   function hRule(yPos) {
-    commands.push(`q 0.80 G 0.4 w ${marginX} ${yPos} m ${pageWidth - marginX} ${yPos} l S Q`);
+    commands.push(`q 0.75 G 0.5 w ${marginX} ${yPos} m ${pageWidth - marginX} ${yPos} l S Q`);
   }
 
+  // Amber filled left bar for the notice block (drawn BEFORE text in same pass — safe).
   function amberBar(xPos, yBottom, height) {
-    commands.push(`q 0.94 0.71 0.16 rg ${xPos} ${yBottom} 3 ${height} re f Q`);
+    commands.push(`q 0.94 0.71 0.16 rg ${xPos} ${yBottom} 4 ${height} re f Q`);
   }
 
-  // Title and subtitle
-  ensureSpace(44);
+  // Light gray stroked border around a mono block (drawn AFTER text — stroke never covers text).
+  function flushMonoBorder() {
+    if (monoBlockStartY === null) return;
+    // At call time y is right below the last drawn line (y += monoLh gives last baseline).
+    const pad = 5;
+    const lastBaseline = y + monoLh;
+    const yBottom = lastBaseline - pad - 3; // 3pt for descenders
+    const height = monoBlockStartY - lastBaseline + pad * 2 + 11; // 8pt above first baseline
+    commands.push(
+      `q 0.78 G 0.5 w ${marginX - 6} ${yBottom} ${textWidth + 12} ${height} re S Q`
+    );
+    monoBlockStartY = null;
+  }
+
+  // ── Title block ──────────────────────────────────────────────────────────
+  ensureSpace(50);
   txt(title, marginX, y, "/F2", 17);
   y -= 21;
   const genDate = manifest?.generatedAt ? new Date(manifest.generatedAt).toISOString().slice(0, 10) : "";
@@ -137,30 +177,37 @@ function buildSimplePdf(title, lines, manifest) {
   const subtitle = genDate ? `${genDate}${sc !== "unknown" ? "   commit " + sc : ""}` : "";
   if (subtitle) {
     txt(subtitle, marginX, y, "/F1", 9);
-    y -= 13;
+    y -= 12;
   }
-  y -= 10;
+  hRule(y - 3);
+  y -= 16;
 
+  // ── Content loop ─────────────────────────────────────────────────────────
   for (const item of lines) {
     if (item === "") {
+      // Flush mono border BEFORE applying the gap so y is still at the last line end.
+      flushMonoBorder();
       inIdentity = false;
       inResults = false;
       nextIsNotice = false;
-      y -= 7;
+      prevWasBullet = false;
+      y -= gapParagraph;
       continue;
     }
 
     if (item.startsWith("## ")) {
+      flushMonoBorder();
       const heading = item.slice(3);
       inIdentity = heading === "Verification Identity";
       inResults = heading === "Automated Results";
       nextIsNotice = heading.startsWith("Important");
-      y -= 8;
-      ensureSpace(26);
+      prevWasBullet = false;
+      y -= gapBeforeHeading;
+      ensureSpace(30);
       txt(heading.toUpperCase(), marginX, y, "/F2", 11);
-      y -= 15;
-      hRule(y + 2);
-      y -= 6;
+      y -= gapHeadingToRule;
+      hRule(y);
+      y -= gapRuleToBody;
       continue;
     }
 
@@ -172,26 +219,42 @@ function buildSimplePdf(title, lines, manifest) {
     const font = isMono ? "/F3" : "/F1";
     const size = isMono ? 9 : 10;
     const lh = isMono ? lhMono : lhBody;
-    const wrapW = isBullet ? 80 : isMono ? 82 : 88;
-    const indentX = isBullet ? 12 : isNotice ? 10 : isMono ? 4 : 0;
+    // wrapW in characters. Helvetica ~4.8pt/char at 10pt; Courier exactly 5.4pt/char at 9pt.
+    // Each type accounts for its indentX so text fills to the right margin.
+    // body (no indent, 520pt): 520/4.8≈108. bullets (14pt indent+prefix): (520-14)/4.8-2≈103.
+    // notice (16pt indent): (520-16)/4.8≈105. mono Courier (6pt indent): (520-6)/5.4≈95.
+    const wrapW = isMono ? 95 : isBullet ? 103 : isNotice ? 105 : 108;
+    const indentX = isBullet ? 14 : isNotice ? 16 : isMono ? 6 : 0;
 
     const wrapped = wrapText(rawText, wrapW);
     const blockH = wrapped.length * lh;
 
-    ensureSpace(blockH + (isNotice ? 6 : 0));
+    ensureSpace(blockH + (isNotice ? 8 : 0));
 
     if (isNotice) {
-      amberBar(marginX, y - blockH + lh - 2, blockH + 4);
+      // Amber bar: top = first baseline + 8pt, bottom = last baseline - 4pt.
+      amberBar(marginX, y - blockH + lh - 4, blockH - lh + 12);
     }
 
+    if (isMono && monoBlockStartY === null) {
+      monoBlockStartY = y;
+      monoLh = lh;
+    }
+
+    // Extra gap between consecutive bullet items (not between wrapped lines of the same item).
+    if (isBullet && prevWasBullet) y -= bulletGap;
+
     for (const [i, line] of wrapped.entries()) {
-      txt(`${i === 0 && isBullet ? "- " : i > 0 ? "  " : ""}${line}`, marginX + indentX, y, font, size);
+      const prefix = isBullet ? (i === 0 ? "- " : "  ") : "";
+      txt(`${prefix}${line}`, marginX + indentX, y, font, size);
       y -= lh;
     }
 
+    prevWasBullet = isBullet;
     if (isNotice) nextIsNotice = false;
   }
 
+  flushMonoBorder();
   if (commands.length > 0) pages.push(commands);
 
   const objects = [];
