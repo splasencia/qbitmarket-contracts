@@ -280,6 +280,17 @@ jobs:
               esac
             '
 
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          manifest="deployment/state/${{ inputs.environment }}/verification-manifest.json"
+          if [ -f "${manifest}" ]; then
+            node scripts/generate_deployment_summary.js \
+              --manifest "${manifest}" \
+              --output-dir "deployment/state/${{ inputs.environment }}" \
+              --audit-commit "${GITHUB_SHA}"
+          fi
+
       - name: Upload deployment state artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -290,6 +301,9 @@ jobs:
             deployment/state/${{ inputs.environment }}/address-book.yml
             deployment/state/${{ inputs.environment }}/contracts.auto.tfvars.json
             deployment/state/${{ inputs.environment }}/verification-manifest.json
+            deployment/state/${{ inputs.environment }}/qbitmarket-contracts-deployment-summary.md
+            deployment/state/${{ inputs.environment }}/qbitmarket-contracts-deployment-summary.html
+            deployment/state/${{ inputs.environment }}/qbitmarket-contracts-deployment-summary.pdf
 
       - name: Upload deployment ABI artifacts
         if: always()

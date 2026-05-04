@@ -17,6 +17,7 @@ on:
       - 'scripts/check_slither_triage.js'
       - 'scripts/generate_audit_manifest.js'
       - 'scripts/generate_security_summary.js'
+      - 'scripts/pdfSummaryEngine.js'
   push:
     paths:
       - '.github/workflows/contract-audit-evidence.yml'
@@ -33,6 +34,7 @@ on:
       - 'scripts/check_slither_triage.js'
       - 'scripts/generate_audit_manifest.js'
       - 'scripts/generate_security_summary.js'
+      - 'scripts/pdfSummaryEngine.js'
   workflow_dispatch:
 
 concurrency:
