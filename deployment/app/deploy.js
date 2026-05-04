@@ -772,7 +772,7 @@ async function main() {
   const feeRecipient = getConfiguredAddress("FEE_RECIPIENT_ADDRESS", fallbackOwner);
   const marketplaceV2FeeRecipient = getConfiguredAddress("MARKETPLACE_V2_FEE_RECIPIENT_ADDRESS", feeRecipient);
   const primaryMarketplaceFeeBps = parseBps(
-    process.env.MARKETPLACE_PLATFORM_FEE_BPS ?? process.env.PLATFORM_FEE_BPS ?? "250",
+    process.env.MARKETPLACE_PLATFORM_FEE_BPS ?? process.env.PLATFORM_FEE_BPS ?? "0",
     "MARKETPLACE_PLATFORM_FEE_BPS|PLATFORM_FEE_BPS"
   );
   const secondaryMarketplaceFeeBps = parseBps(
@@ -781,6 +781,11 @@ async function main() {
       String(primaryMarketplaceFeeBps),
     "MARKETPLACE_V2_PLATFORM_FEE_BPS|MARKETPLACE_V2_FEE_BPS"
   );
+  if (primaryMarketplaceFeeBps !== 0 || secondaryMarketplaceFeeBps !== 0) {
+    throw new Error(
+      "qbitmarket is configured as a non-commercial testnet demo; marketplace fee bps must be 0."
+    );
+  }
   const hasMarketplaceV2SiteNativeTokenAddress =
     process.env.MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS !== undefined &&
     process.env.MARKETPLACE_V2_SITE_NATIVE_TOKEN_ADDRESS !== "";
@@ -799,6 +804,11 @@ async function main() {
         "MARKETPLACE_V2_SITE_NATIVE_TOKEN_FEE_BPS"
       )
     : null;
+  if (hasMarketplaceV2SiteNativeTokenFeeBps && marketplaceV2SiteNativeTokenFeeBps !== 0) {
+    throw new Error(
+      "qbitmarket is configured as a non-commercial testnet demo; site-native token fee bps must be 0."
+    );
+  }
   if (
     hasMarketplaceV2SiteNativeTokenFeeBps &&
     marketplaceV2SiteNativeTokenFeeBps > secondaryMarketplaceFeeBps

@@ -17,7 +17,7 @@ describe("Marketplace secondary lifecycle edge cases", function () {
     const resolvedFeeRecipient = options.feeRecipient ?? feeRecipient.address;
 
     const MarketplaceSecondaryERC721 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC721_FQN);
-    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, resolvedFeeRecipient, 250);
+    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, resolvedFeeRecipient, 0);
     await marketplace.waitForDeployment();
 
     const ERC721 = await ethers.getContractFactory(ERC721_FQN);
@@ -31,7 +31,7 @@ describe("Marketplace secondary lifecycle edge cases", function () {
     const [owner, feeRecipient, seller, buyer, bidder, other] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC1155 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC1155_FQN);
-    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC1155 = await ethers.getContractFactory(ERC1155_FQN);
@@ -196,7 +196,7 @@ describe("Marketplace secondary lifecycle edge cases", function () {
     );
   });
 
-  it("keeps ERC-721 native listing state intact when a fee recipient rejects ETH", async function () {
+  it("does not transfer any ETH to the fee recipient for ERC-721 native listings", async function () {
     const RejectingEthReceiver = await ethers.getContractFactory(REJECTING_ETH_RECEIVER_FQN);
     const rejectingFeeRecipient = await RejectingEthReceiver.deploy();
     await rejectingFeeRecipient.waitForDeployment();
@@ -207,12 +207,13 @@ describe("Marketplace secondary lifecycle edge cases", function () {
     const price = ethers.parseEther("1");
     const listingId = await createERC721Listing(marketplace, collection, seller, 20, price);
 
-    await expect(marketplace.connect(buyer).buyListing(listingId, { value: price })).to.be.revertedWith(
-      "native transfer failed"
+    await expect(marketplace.connect(buyer).buyListing(listingId, { value: price })).to.emit(
+      marketplace,
+      "ListingPurchased"
     );
 
-    expect((await marketplace.listings(listingId)).active).to.equal(true);
-    expect(await collection.ownerOf(20)).to.equal(seller.address);
+    expect((await marketplace.listings(listingId)).active).to.equal(false);
+    expect(await collection.ownerOf(20)).to.equal(buyer.address);
   });
 
   it("rejects invalid, cancelled, expired, reused, and unauthorized ERC-721 offers", async function () {

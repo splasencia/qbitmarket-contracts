@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -20,7 +19,7 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         uint96 initialPlatformFeeBps_
     ) MarketplaceSecondaryBase(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
 
-    /// @notice Sets the ERC-20 token that receives the intentional site-native marketplace fee discount.
+    /// @notice Sets the optional site-native ERC-20 test token while keeping all fees disabled.
     /// @dev The token must be accepted by the hybrid payment-token policy before it can be configured.
     function setSiteNativePaymentToken(address newToken) external onlyOwner {
         if (newToken != address(0)) {
@@ -33,55 +32,46 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         emit SiteNativePaymentTokenUpdated(previousToken, newToken);
     }
 
-    /// @notice Sets the reduced fee for the configured site-native payment token.
-    /// @dev The reduced fee must stay less than or equal to the standard platform fee.
+    /// @notice Keeps the disabled site-native fee at zero for the non-commercial testnet demo.
     function setSiteNativePaymentTokenFeeBps(uint96 newFeeBps) external onlyOwner {
-        require(newFeeBps <= platformFeeBps, "native fee high");
+        require(newFeeBps == 0, "fees disabled");
 
         uint96 previousFeeBps = siteNativePaymentTokenFeeBps;
-        siteNativePaymentTokenFeeBps = newFeeBps;
+        siteNativePaymentTokenFeeBps = 0;
 
         emit SiteNativePaymentTokenFeeUpdated(previousFeeBps, newFeeBps);
     }
 
-    /// @notice Atomically configures the site-native discount token and its reduced marketplace fee.
-    /// @dev This two-tier fee model is intentional: regular tokens use platformFeeBps, while the configured site token uses newFeeBps.
+    /// @notice Atomically configures the site-native token while keeping demo fees disabled.
     function setSiteNativePaymentTokenConfig(address newToken, uint96 newFeeBps) external onlyOwner {
         if (newToken != address(0)) {
             _requireSupportedPaymentToken(newToken);
         }
-        require(newFeeBps <= platformFeeBps, "native fee high");
+        require(newFeeBps == 0, "fees disabled");
 
         address previousToken = siteNativePaymentToken;
         uint96 previousFeeBps = siteNativePaymentTokenFeeBps;
 
         siteNativePaymentToken = newToken;
-        siteNativePaymentTokenFeeBps = newFeeBps;
+        siteNativePaymentTokenFeeBps = 0;
 
         emit SiteNativePaymentTokenUpdated(previousToken, newToken);
         emit SiteNativePaymentTokenFeeUpdated(previousFeeBps, newFeeBps);
     }
 
-    /// @notice Returns the marketplace fee for a payment token, including the site-native discount when applicable.
-    function effectivePlatformFeeBps(address paymentToken) public view returns (uint96) {
-        if (
-            siteNativePaymentToken != address(0) &&
-            paymentToken == siteNativePaymentToken
-        ) {
-            return siteNativePaymentTokenFeeBps;
-        }
-
-        return platformFeeBps;
+    /// @notice Returns zero for every payment token. Fees are disabled for this non-commercial demo.
+    function effectivePlatformFeeBps(address) public pure returns (uint96) {
+        return 0;
     }
 
     function _quotePayout(
-        address collection,
-        uint256 tokenId,
+        address,
+        uint256,
         uint256 salePrice,
-        address paymentToken
+        address
     )
         internal
-        view
+        pure
         returns (
             uint256 platformFeeAmount,
             address royaltyRecipient_,
@@ -89,22 +79,12 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
             uint256 sellerProceeds
         )
     {
-        platformFeeAmount = (salePrice * effectivePlatformFeeBps(paymentToken)) / MAX_BPS;
-
-        if (_supportsInterface(collection, type(IERC2981).interfaceId)) {
-            try IERC2981(collection).royaltyInfo(tokenId, salePrice) returns (
-                address resolvedRecipient,
-                uint256 resolvedAmount
-            ) {
-                if (resolvedRecipient != address(0) && resolvedAmount > 0) {
-                    royaltyRecipient_ = resolvedRecipient;
-                    royaltyAmount = resolvedAmount;
-                }
-            } catch {}
-        }
-
-        require(platformFeeAmount + royaltyAmount <= salePrice, "payout too high");
-        sellerProceeds = salePrice - platformFeeAmount - royaltyAmount;
+        // qbitmarket is a non-commercial QANPlatform testnet demo. Platform
+        // fees and royalties are intentionally disabled for every sale path.
+        platformFeeAmount = 0;
+        royaltyRecipient_ = address(0);
+        royaltyAmount = 0;
+        sellerProceeds = salePrice;
     }
 
     function _requireSupportedPaymentToken(address paymentToken) internal view {

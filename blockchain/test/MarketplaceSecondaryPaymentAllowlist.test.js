@@ -15,7 +15,7 @@ describe("Marketplace secondary payment token allowlist", function () {
     const [owner, feeRecipient, seller, bidder] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC721 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC721_FQN);
-    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC721 = await ethers.getContractFactory(ERC721_FQN);
@@ -33,7 +33,7 @@ describe("Marketplace secondary payment token allowlist", function () {
     const [owner, feeRecipient, seller] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC1155 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC1155_FQN);
-    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC1155 = await ethers.getContractFactory(ERC1155_FQN);

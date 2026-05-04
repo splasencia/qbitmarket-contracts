@@ -5,7 +5,7 @@ pragma solidity ^0.8.28;
 
 // File: MarketplaceSecondaryAuctions.sol
 
-// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
+// File: ../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
 /**
@@ -82,10 +82,10 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
+// File: ../node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 // OpenZeppelin Contracts (last updated v4.9.3) (token/ERC20/utils/SafeERC20.sol)
 
-// File: ../app/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol
+// File: ../node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (token/ERC20/extensions/IERC20Permit.sol)
 
 /**
@@ -174,7 +174,7 @@ interface IERC20Permit {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/utils/Address.sol
+// File: ../node_modules/@openzeppelin/contracts/utils/Address.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
 
 /**
@@ -552,10 +552,10 @@ library SafeERC20 {
     }
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
+// File: ../node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC721/IERC721.sol)
 
-// File: ../app/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
+// File: ../node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 /**
@@ -711,37 +711,15 @@ interface IERC721 is IERC165 {
 
 // File: MarketplaceSecondaryPayments.sol
 
-// File: ../app/node_modules/@openzeppelin/contracts/interfaces/IERC2981.sol
-// OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC2981.sol)
-
-/**
- * @dev Interface for the NFT Royalty Standard.
- *
- * A standardized way to retrieve royalty payment information for non-fungible tokens (NFTs) to enable universal
- * support for royalty payments across all NFT marketplaces and ecosystem participants.
- *
- * _Available since v4.5._
- */
-interface IERC2981 is IERC165 {
-    /**
-     * @dev Returns how much royalty is owed and to whom, based on a sale price that may be denominated in any unit of
-     * exchange. The royalty amount is denominated and should be paid in that same unit of exchange.
-     */
-    function royaltyInfo(
-        uint256 tokenId,
-        uint256 salePrice
-    ) external view returns (address receiver, uint256 royaltyAmount);
-}
-
 // File: MarketplaceSecondaryBase.sol
 
-// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable2Step.sol
+// File: ../node_modules/@openzeppelin/contracts/access/Ownable2Step.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable2Step.sol)
 
-// File: ../app/node_modules/@openzeppelin/contracts/access/Ownable.sol
+// File: ../node_modules/@openzeppelin/contracts/access/Ownable.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-// File: ../app/node_modules/@openzeppelin/contracts/utils/Context.sol
+// File: ../node_modules/@openzeppelin/contracts/utils/Context.sol
 // OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)
 
 /**
@@ -896,7 +874,7 @@ abstract contract Ownable2Step is Ownable {
     }
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/security/Pausable.sol
+// File: ../node_modules/@openzeppelin/contracts/security/Pausable.sol
 // OpenZeppelin Contracts (last updated v4.7.0) (security/Pausable.sol)
 
 /**
@@ -998,7 +976,7 @@ abstract contract Pausable is Context {
     }
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
+// File: ../node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (security/ReentrancyGuard.sol)
 
 /**
@@ -1074,7 +1052,7 @@ abstract contract ReentrancyGuard {
     }
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
+// File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC1155/IERC1155.sol)
 
 /**
@@ -1190,7 +1168,7 @@ interface IERC1155 is IERC165 {
     ) external;
 }
 
-// File: ../app/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
+// File: ../node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol
 // OpenZeppelin Contracts (last updated v4.5.0) (token/ERC1155/IERC1155Receiver.sol)
 
 /**
@@ -1247,7 +1225,7 @@ interface IERC1155Receiver is IERC165 {
 
 abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, ReentrancyGuard, IERC1155Receiver {
     uint96 public constant MAX_BPS = 10_000;
-    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 0;
 
     struct Listing {
         address seller;
@@ -1493,7 +1471,7 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "bad owner");
         require(initialFeeRecipient_ != address(0), "bad fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "fee high");
+        require(initialPlatformFeeBps_ == 0, "fees disabled");
 
         feeRecipient = initialFeeRecipient_;
         platformFeeBps = initialPlatformFeeBps_;
@@ -1539,8 +1517,8 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "fee high");
-        require(newPlatformFeeBps >= siteNativePaymentTokenFeeBps, "below native fee");
+        require(newPlatformFeeBps == 0, "fees disabled");
+        require(siteNativePaymentTokenFeeBps == 0, "fees disabled");
 
         uint96 previousFeeBps = platformFeeBps;
         platformFeeBps = newPlatformFeeBps;
@@ -1733,7 +1711,7 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         uint96 initialPlatformFeeBps_
     ) MarketplaceSecondaryBase(initialOwner_, initialFeeRecipient_, initialPlatformFeeBps_) {}
 
-    /// @notice Sets the ERC-20 token that receives the intentional site-native marketplace fee discount.
+    /// @notice Sets the optional site-native ERC-20 test token while keeping all fees disabled.
     /// @dev The token must be accepted by the hybrid payment-token policy before it can be configured.
     function setSiteNativePaymentToken(address newToken) external onlyOwner {
         if (newToken != address(0)) {
@@ -1746,55 +1724,46 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
         emit SiteNativePaymentTokenUpdated(previousToken, newToken);
     }
 
-    /// @notice Sets the reduced fee for the configured site-native payment token.
-    /// @dev The reduced fee must stay less than or equal to the standard platform fee.
+    /// @notice Keeps the disabled site-native fee at zero for the non-commercial testnet demo.
     function setSiteNativePaymentTokenFeeBps(uint96 newFeeBps) external onlyOwner {
-        require(newFeeBps <= platformFeeBps, "native fee high");
+        require(newFeeBps == 0, "fees disabled");
 
         uint96 previousFeeBps = siteNativePaymentTokenFeeBps;
-        siteNativePaymentTokenFeeBps = newFeeBps;
+        siteNativePaymentTokenFeeBps = 0;
 
         emit SiteNativePaymentTokenFeeUpdated(previousFeeBps, newFeeBps);
     }
 
-    /// @notice Atomically configures the site-native discount token and its reduced marketplace fee.
-    /// @dev This two-tier fee model is intentional: regular tokens use platformFeeBps, while the configured site token uses newFeeBps.
+    /// @notice Atomically configures the site-native token while keeping demo fees disabled.
     function setSiteNativePaymentTokenConfig(address newToken, uint96 newFeeBps) external onlyOwner {
         if (newToken != address(0)) {
             _requireSupportedPaymentToken(newToken);
         }
-        require(newFeeBps <= platformFeeBps, "native fee high");
+        require(newFeeBps == 0, "fees disabled");
 
         address previousToken = siteNativePaymentToken;
         uint96 previousFeeBps = siteNativePaymentTokenFeeBps;
 
         siteNativePaymentToken = newToken;
-        siteNativePaymentTokenFeeBps = newFeeBps;
+        siteNativePaymentTokenFeeBps = 0;
 
         emit SiteNativePaymentTokenUpdated(previousToken, newToken);
         emit SiteNativePaymentTokenFeeUpdated(previousFeeBps, newFeeBps);
     }
 
-    /// @notice Returns the marketplace fee for a payment token, including the site-native discount when applicable.
-    function effectivePlatformFeeBps(address paymentToken) public view returns (uint96) {
-        if (
-            siteNativePaymentToken != address(0) &&
-            paymentToken == siteNativePaymentToken
-        ) {
-            return siteNativePaymentTokenFeeBps;
-        }
-
-        return platformFeeBps;
+    /// @notice Returns zero for every payment token. Fees are disabled for this non-commercial demo.
+    function effectivePlatformFeeBps(address) public pure returns (uint96) {
+        return 0;
     }
 
     function _quotePayout(
-        address collection,
-        uint256 tokenId,
+        address,
+        uint256,
         uint256 salePrice,
-        address paymentToken
+        address
     )
         internal
-        view
+        pure
         returns (
             uint256 platformFeeAmount,
             address royaltyRecipient_,
@@ -1802,22 +1771,12 @@ abstract contract MarketplaceSecondaryPayments is MarketplaceSecondaryBase {
             uint256 sellerProceeds
         )
     {
-        platformFeeAmount = (salePrice * effectivePlatformFeeBps(paymentToken)) / MAX_BPS;
-
-        if (_supportsInterface(collection, type(IERC2981).interfaceId)) {
-            try IERC2981(collection).royaltyInfo(tokenId, salePrice) returns (
-                address resolvedRecipient,
-                uint256 resolvedAmount
-            ) {
-                if (resolvedRecipient != address(0) && resolvedAmount > 0) {
-                    royaltyRecipient_ = resolvedRecipient;
-                    royaltyAmount = resolvedAmount;
-                }
-            } catch {}
-        }
-
-        require(platformFeeAmount + royaltyAmount <= salePrice, "payout too high");
-        sellerProceeds = salePrice - platformFeeAmount - royaltyAmount;
+        // qbitmarket is a non-commercial QANPlatform testnet demo. Platform
+        // fees and royalties are intentionally disabled for every sale path.
+        platformFeeAmount = 0;
+        royaltyRecipient_ = address(0);
+        royaltyAmount = 0;
+        sellerProceeds = salePrice;
     }
 
     function _requireSupportedPaymentToken(address paymentToken) internal view {

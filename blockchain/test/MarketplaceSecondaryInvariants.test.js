@@ -21,7 +21,7 @@ describe("Marketplace focused fuzz and invariants", function () {
     const [owner, feeRecipient, seller, bidder, otherBidder] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC721 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC721_FQN);
-    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC721 = await ethers.getContractFactory(ERC721_FQN);
@@ -35,7 +35,7 @@ describe("Marketplace focused fuzz and invariants", function () {
     const [owner, feeRecipient, seller, bidder, otherBidder] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC1155 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC1155_FQN);
-    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC1155 = await ethers.getContractFactory(ERC1155_FQN);
@@ -45,7 +45,7 @@ describe("Marketplace focused fuzz and invariants", function () {
     return { owner, feeRecipient, seller, bidder, otherBidder, marketplace, collection };
   }
 
-  async function deployPrimaryProxyFixture(initialFeeBps = 250) {
+  async function deployPrimaryProxyFixture(initialFeeBps = 0) {
     const [owner, feeRecipient] = await ethers.getSigners();
 
     const MarketplacePrimaryUpgradeable = await ethers.getContractFactory(MARKETPLACE_PRIMARY_UPGRADEABLE_FQN);
@@ -316,36 +316,28 @@ describe("Marketplace focused fuzz and invariants", function () {
     expect(await externalToken.balanceOf(marketplaceAddress)).to.equal(externalAmount);
   });
 
-  it("keeps primary and secondary fee caps invariant across fuzzed fee values", async function () {
+  it("keeps primary and secondary fees disabled across fee configuration attempts", async function () {
     const { owner, marketplace: primaryMarketplace } = await deployPrimaryProxyFixture();
     const { owner: secondaryOwner, marketplace: secondaryMarketplace } = await deploySecondaryFixture();
 
-    for (const allowedFeeBps of [0, 1, 250, 999, 1_000]) {
-      await primaryMarketplace.connect(owner).setPlatformFeeBps(allowedFeeBps);
-      expect(await primaryMarketplace.platformFeeBps()).to.equal(BigInt(allowedFeeBps));
+    await primaryMarketplace.connect(owner).setPlatformFeeBps(0);
+    expect(await primaryMarketplace.platformFeeBps()).to.equal(0n);
 
-      await secondaryMarketplace.connect(secondaryOwner).setSiteNativePaymentTokenFeeBps(0);
-      await secondaryMarketplace.connect(secondaryOwner).setPlatformFeeBps(allowedFeeBps);
-      expect(await secondaryMarketplace.platformFeeBps()).to.equal(BigInt(allowedFeeBps));
-    }
+    await secondaryMarketplace.connect(secondaryOwner).setSiteNativePaymentTokenFeeBps(0);
+    await secondaryMarketplace.connect(secondaryOwner).setPlatformFeeBps(0);
+    expect(await secondaryMarketplace.platformFeeBps()).to.equal(0n);
+    expect(await secondaryMarketplace.siteNativePaymentTokenFeeBps()).to.equal(0n);
 
-    for (const disallowedFeeBps of [1_001, 2_500, 10_001]) {
-      await expect(primaryMarketplace.connect(owner).setPlatformFeeBps(disallowedFeeBps)).to.be.revertedWith(
-        "MarketplacePrimaryUpgradeable: fee too high"
+    for (const disabledFeeBps of [1, 250, 999, 1_000, 10_001]) {
+      await expect(primaryMarketplace.connect(owner).setPlatformFeeBps(disabledFeeBps)).to.be.revertedWith(
+        "MarketplacePrimaryUpgradeable: fees disabled"
       );
-      await expect(secondaryMarketplace.connect(secondaryOwner).setPlatformFeeBps(disallowedFeeBps)).to.be.revertedWith(
-        "fee high"
+      await expect(secondaryMarketplace.connect(secondaryOwner).setPlatformFeeBps(disabledFeeBps)).to.be.revertedWith(
+        "fees disabled"
       );
+      await expect(
+        secondaryMarketplace.connect(secondaryOwner).setSiteNativePaymentTokenFeeBps(disabledFeeBps)
+      ).to.be.revertedWith("fees disabled");
     }
-
-    await secondaryMarketplace.connect(secondaryOwner).setPlatformFeeBps(500);
-    await secondaryMarketplace.connect(secondaryOwner).setSiteNativePaymentTokenFeeBps(400);
-
-    await expect(secondaryMarketplace.connect(secondaryOwner).setPlatformFeeBps(399)).to.be.revertedWith(
-      "below native fee"
-    );
-    await expect(secondaryMarketplace.connect(secondaryOwner).setSiteNativePaymentTokenFeeBps(501)).to.be.revertedWith(
-      "native fee high"
-    );
   });
 });

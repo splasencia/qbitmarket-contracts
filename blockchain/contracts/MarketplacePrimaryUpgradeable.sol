@@ -5,17 +5,15 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface ILazyMintCollectionUpgradeable {
     function owner() external view returns (address);
 
     function mintLazy(
         address to,
-        uint256 tokenId,
+        uint256,
         string calldata tokenURI_,
         uint256 price,
         uint256 rootVersion,
@@ -33,8 +31,8 @@ contract MarketplacePrimaryUpgradeable is
     ReentrancyGuardUpgradeable
 {
     uint96 public constant MAX_BPS = 10_000;
-    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
-    uint96 public constant MAX_COMBINED_FEE_BPS = 5_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 0;
+    uint96 public constant MAX_COMBINED_FEE_BPS = 0;
 
     address public feeRecipient;
     uint96 public platformFeeBps;
@@ -56,7 +54,7 @@ contract MarketplacePrimaryUpgradeable is
     {
         require(initialOwner_ != address(0), "MarketplacePrimaryUpgradeable: invalid owner");
         require(initialFeeRecipient_ != address(0), "MarketplacePrimaryUpgradeable: invalid fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "MarketplacePrimaryUpgradeable: fee too high");
+        require(initialPlatformFeeBps_ == 0, "MarketplacePrimaryUpgradeable: fees disabled");
 
         __Ownable_init();
         __Pausable_init();
@@ -137,7 +135,7 @@ contract MarketplacePrimaryUpgradeable is
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "MarketplacePrimaryUpgradeable: fee too high");
+        require(newPlatformFeeBps == 0, "MarketplacePrimaryUpgradeable: fees disabled");
 
         uint96 previousFeeBps = platformFeeBps;
         platformFeeBps = newPlatformFeeBps;
@@ -159,7 +157,7 @@ contract MarketplacePrimaryUpgradeable is
 
     function _quotePayout(
         address collection,
-        uint256 tokenId,
+        uint256,
         uint256 salePrice
     )
         internal
@@ -177,41 +175,12 @@ contract MarketplacePrimaryUpgradeable is
         seller = ILazyMintCollectionUpgradeable(collection).owner();
         require(seller != address(0), "MarketplacePrimaryUpgradeable: invalid seller");
 
-        platformFeeAmount = (salePrice * platformFeeBps) / MAX_BPS;
-
-        if (_supportsInterface(collection, type(IERC2981).interfaceId)) {
-            try IERC2981(collection).royaltyInfo(tokenId, salePrice) returns (
-                address resolvedRecipient,
-                uint256 resolvedAmount
-            ) {
-                if (resolvedRecipient != address(0) && resolvedAmount > 0) {
-                    royaltyRecipient_ = resolvedRecipient;
-                    royaltyAmount = resolvedAmount;
-                }
-            } catch {}
-        }
-
-        require(
-            platformFeeAmount + royaltyAmount <= salePrice,
-            "MarketplacePrimaryUpgradeable: payout exceeds sale price"
-        );
-        require(
-            platformFeeAmount + royaltyAmount <= (salePrice * MAX_COMBINED_FEE_BPS) / MAX_BPS,
-            "MarketplacePrimaryUpgradeable: combined fees too high"
-        );
-        sellerProceeds = salePrice - platformFeeAmount - royaltyAmount;
-    }
-
-    function _supportsInterface(address account, bytes4 interfaceId) internal view returns (bool) {
-        if (account.code.length == 0) {
-            return false;
-        }
-
-        try IERC165(account).supportsInterface(interfaceId) returns (bool supported) {
-            return supported;
-        } catch {
-            return false;
-        }
+        // qbitmarket is a non-commercial QANPlatform testnet demo. Platform
+        // fees and royalties are intentionally disabled for every sale path.
+        platformFeeAmount = 0;
+        royaltyRecipient_ = address(0);
+        royaltyAmount = 0;
+        sellerProceeds = salePrice;
     }
 
     function _transferNative(address recipient, uint256 amount) internal {

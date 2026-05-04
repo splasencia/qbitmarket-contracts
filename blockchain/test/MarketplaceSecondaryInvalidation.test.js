@@ -13,7 +13,7 @@ describe("Marketplace secondary invalidation", function () {
     const [owner, feeRecipient, seller, buyer, bidder, otherSeller] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC721 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC721_FQN);
-    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC721Collection = await ethers.getContractFactory(ERC721_COLLECTION_FQN);
@@ -53,7 +53,7 @@ describe("Marketplace secondary invalidation", function () {
     const [owner, feeRecipient, seller, buyer, bidder] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC1155 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC1155_FQN);
-    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     const ERC1155Collection = await ethers.getContractFactory(ERC1155_COLLECTION_FQN);

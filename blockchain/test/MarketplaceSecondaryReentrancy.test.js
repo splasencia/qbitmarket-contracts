@@ -14,7 +14,7 @@ describe("Marketplace secondary reentrancy hardening", function () {
     const [owner, feeRecipient, seller, bidder] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC721 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC721_FQN);
-    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC721.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     return { owner, feeRecipient, seller, bidder, marketplace };
@@ -24,7 +24,7 @@ describe("Marketplace secondary reentrancy hardening", function () {
     const [owner, feeRecipient, seller, bidder] = await ethers.getSigners();
 
     const MarketplaceSecondaryERC1155 = await ethers.getContractFactory(MARKETPLACE_SECONDARY_ERC1155_FQN);
-    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 250);
+    const marketplace = await MarketplaceSecondaryERC1155.deploy(owner.address, feeRecipient.address, 0);
     await marketplace.waitForDeployment();
 
     return { owner, feeRecipient, seller, bidder, marketplace };

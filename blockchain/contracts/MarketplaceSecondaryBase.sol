@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, ReentrancyGuard, IERC1155Receiver {
     uint96 public constant MAX_BPS = 10_000;
-    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 0;
 
     struct Listing {
         address seller;
@@ -257,7 +257,7 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "bad owner");
         require(initialFeeRecipient_ != address(0), "bad fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "fee high");
+        require(initialPlatformFeeBps_ == 0, "fees disabled");
 
         feeRecipient = initialFeeRecipient_;
         platformFeeBps = initialPlatformFeeBps_;
@@ -303,8 +303,8 @@ abstract contract MarketplaceSecondaryBase is Ownable2Step, Pausable, Reentrancy
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "fee high");
-        require(newPlatformFeeBps >= siteNativePaymentTokenFeeBps, "below native fee");
+        require(newPlatformFeeBps == 0, "fees disabled");
+        require(siteNativePaymentTokenFeeBps == 0, "fees disabled");
 
         uint96 previousFeeBps = platformFeeBps;
         platformFeeBps = newPlatformFeeBps;

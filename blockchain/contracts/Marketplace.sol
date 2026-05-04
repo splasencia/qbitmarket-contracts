@@ -2,17 +2,15 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
-import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface ILazyMintCollection {
     function owner() external view returns (address);
 
     function mintLazy(
         address to,
-        uint256 tokenId,
+        uint256,
         string calldata tokenURI_,
         uint256 price,
         uint256 rootVersion,
@@ -22,8 +20,8 @@ interface ILazyMintCollection {
 
 contract Marketplace is Ownable2Step, Pausable, ReentrancyGuard {
     uint96 public constant MAX_BPS = 10_000;
-    uint96 public constant MAX_PLATFORM_FEE_BPS = 1_000;
-    uint96 public constant MAX_COMBINED_FEE_BPS = 5_000;
+    uint96 public constant MAX_PLATFORM_FEE_BPS = 0;
+    uint96 public constant MAX_COMBINED_FEE_BPS = 0;
 
     address public feeRecipient;
     uint96 public platformFeeBps;
@@ -37,7 +35,7 @@ contract Marketplace is Ownable2Step, Pausable, ReentrancyGuard {
     constructor(address initialOwner_, address initialFeeRecipient_, uint96 initialPlatformFeeBps_) {
         require(initialOwner_ != address(0), "Marketplace: invalid owner");
         require(initialFeeRecipient_ != address(0), "Marketplace: invalid fee recipient");
-        require(initialPlatformFeeBps_ <= MAX_PLATFORM_FEE_BPS, "Marketplace: fee too high");
+        require(initialPlatformFeeBps_ == 0, "Marketplace: fees disabled");
 
         feeRecipient = initialFeeRecipient_;
         platformFeeBps = initialPlatformFeeBps_;
@@ -114,7 +112,7 @@ contract Marketplace is Ownable2Step, Pausable, ReentrancyGuard {
     }
 
     function setPlatformFeeBps(uint96 newPlatformFeeBps) external onlyOwner {
-        require(newPlatformFeeBps <= MAX_PLATFORM_FEE_BPS, "Marketplace: fee too high");
+        require(newPlatformFeeBps == 0, "Marketplace: fees disabled");
 
         uint96 previousFeeBps = platformFeeBps;
         platformFeeBps = newPlatformFeeBps;
@@ -132,7 +130,7 @@ contract Marketplace is Ownable2Step, Pausable, ReentrancyGuard {
 
     function _quotePayout(
         address collection,
-        uint256 tokenId,
+        uint256,
         uint256 salePrice
     )
         internal
@@ -150,38 +148,12 @@ contract Marketplace is Ownable2Step, Pausable, ReentrancyGuard {
         seller = ILazyMintCollection(collection).owner();
         require(seller != address(0), "Marketplace: invalid seller");
 
-        platformFeeAmount = (salePrice * platformFeeBps) / MAX_BPS;
-
-        if (_supportsInterface(collection, type(IERC2981).interfaceId)) {
-            try IERC2981(collection).royaltyInfo(tokenId, salePrice) returns (
-                address resolvedRecipient,
-                uint256 resolvedAmount
-            ) {
-                if (resolvedRecipient != address(0) && resolvedAmount > 0) {
-                    royaltyRecipient_ = resolvedRecipient;
-                    royaltyAmount = resolvedAmount;
-                }
-            } catch {}
-        }
-
-        require(platformFeeAmount + royaltyAmount <= salePrice, "Marketplace: payout exceeds sale price");
-        require(
-            platformFeeAmount + royaltyAmount <= (salePrice * MAX_COMBINED_FEE_BPS) / MAX_BPS,
-            "Marketplace: combined fees too high"
-        );
-        sellerProceeds = salePrice - platformFeeAmount - royaltyAmount;
-    }
-
-    function _supportsInterface(address account, bytes4 interfaceId) internal view returns (bool) {
-        if (account.code.length == 0) {
-            return false;
-        }
-
-        try IERC165(account).supportsInterface(interfaceId) returns (bool supported) {
-            return supported;
-        } catch {
-            return false;
-        }
+        // qbitmarket is a non-commercial QANPlatform testnet demo. Platform
+        // fees and royalties are intentionally disabled for every sale path.
+        platformFeeAmount = 0;
+        royaltyRecipient_ = address(0);
+        royaltyAmount = 0;
+        sellerProceeds = salePrice;
     }
 
     function _transferNative(address recipient, uint256 amount) internal {

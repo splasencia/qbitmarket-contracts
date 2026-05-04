@@ -5,9 +5,8 @@ import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
-contract ERC1155Collection is ERC1155, ERC1155Supply, ERC2981, Ownable2Step, Pausable {
+contract ERC1155Collection is ERC1155, ERC1155Supply, Ownable2Step, Pausable {
     uint96 public constant MAX_BPS = 10_000;
 
     string private _name;
@@ -37,13 +36,8 @@ contract ERC1155Collection is ERC1155, ERC1155Supply, ERC2981, Ownable2Step, Pau
         _symbol = symbol_;
         _contractMetadataURI = contractURI_;
 
-        if (royaltyRecipient_ != address(0)) {
-            require(royaltyBps_ <= MAX_BPS, "ERC1155Collection: royalty too high");
-            _setDefaultRoyalty(royaltyRecipient_, royaltyBps_);
-            emit DefaultRoyaltyUpdated(royaltyRecipient_, royaltyBps_);
-        } else {
-            require(royaltyBps_ == 0, "ERC1155Collection: royalty recipient required");
-        }
+        royaltyRecipient_;
+        require(royaltyBps_ == 0, "ERC1155Collection: royalties disabled");
 
         _transferOwnership(initialOwner_);
         emit ContractURIUpdated(contractURI_);
@@ -128,22 +122,19 @@ contract ERC1155Collection is ERC1155, ERC1155Supply, ERC2981, Ownable2Step, Pau
     }
 
     function setDefaultRoyalty(address recipient, uint96 feeNumerator) external onlyOwner {
-        require(recipient != address(0), "ERC1155Collection: invalid royalty recipient");
-        require(feeNumerator <= MAX_BPS, "ERC1155Collection: royalty too high");
-
-        _setDefaultRoyalty(recipient, feeNumerator);
-        emit DefaultRoyaltyUpdated(recipient, feeNumerator);
+        recipient;
+        require(feeNumerator == 0, "ERC1155Collection: royalties disabled");
+        emit DefaultRoyaltyUpdated(address(0), 0);
     }
 
     function clearDefaultRoyalty() external onlyOwner {
-        _deleteDefaultRoyalty();
         emit DefaultRoyaltyCleared();
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC1155, ERC2981)
+        override(ERC1155)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

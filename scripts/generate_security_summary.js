@@ -2,7 +2,6 @@
 
 const fs = require("fs");
 const path = require("path");
-const { shortHash, renderMarkdown, renderHtml, buildSimplePdf } = require("./pdfSummaryEngine");
 
 const args = process.argv.slice(2);
 let manifestPath = path.join("/tmp", "qbitmarket-contract-audit-evidence", "audit-evidence-manifest.json");
@@ -33,8 +32,161 @@ function readJson(filePath, fallback) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function shortHash(value) {
+  if (!value || value === "unknown") return "unknown";
+  return String(value).slice(0, 12);
+}
+
 function sum(items, selector) {
   return items.reduce((total, item) => total + selector(item), 0);
+}
+
+function flattenCounts(items, fieldName) {
+  const result = {};
+  for (const item of items) {
+    const counts = item[fieldName] || {};
+    for (const [key, count] of Object.entries(counts)) {
+      result[key] = (result[key] || 0) + count;
+    }
+  }
+  return result;
+}
+
+function formatCounts(counts) {
+  const entries = Object.entries(counts).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) return "none";
+  return entries.map(([name, count]) => `${name}: ${count}`).join(", ");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function wrapText(text, width) {
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > width && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines.length > 0 ? lines : [""];
+}
+
+function pdfEscape(value) {
+  return String(value)
+    .replaceAll("\\", "\\\\")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)");
+}
+
+function buildSimplePdf(title, lines) {
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const marginX = 54;
+  const marginY = 54;
+  const lineHeight = 14;
+  const bodySize = 10;
+  const titleSize = 16;
+  const pages = [];
+  let commands = [];
+  let y = pageHeight - marginY;
+
+  function newPage() {
+    if (commands.length > 0) {
+      pages.push(commands);
+    }
+    commands = [];
+    y = pageHeight - marginY;
+  }
+
+  function drawLine(text, options = {}) {
+    const size = options.title ? titleSize : bodySize;
+    const font = options.bold ? "/F2" : "/F1";
+    const indent = options.indent || 0;
+
+    if (y < marginY) newPage();
+    commands.push(`BT ${font} ${size} Tf ${marginX + indent} ${y} Td (${pdfEscape(text)}) Tj ET`);
+    y -= options.title ? 22 : lineHeight;
+  }
+
+  drawLine(title, { title: true, bold: true });
+  for (const item of lines) {
+    if (item === "") {
+      y -= 7;
+      continue;
+    }
+
+    const isHeading = item.startsWith("## ");
+    const isBullet = item.startsWith("- ");
+    const text = isHeading ? item.slice(3) : isBullet ? item.slice(2) : item;
+    const prefix = isBullet ? "- " : "";
+    const indent = isBullet ? 14 : 0;
+    const width = isBullet ? 82 : 88;
+
+    for (const [lineIndex, wrapped] of wrapText(text, width).entries()) {
+      drawLine(`${lineIndex === 0 ? prefix : "  "}${wrapped}`, {
+        bold: isHeading,
+        indent,
+      });
+    }
+
+    if (isHeading) y -= 3;
+  }
+  if (commands.length > 0) pages.push(commands);
+
+  const objects = [];
+  function addObject(body) {
+    objects.push(body);
+    return objects.length;
+  }
+
+  const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
+  const pagesId = addObject("PAGES_PLACEHOLDER");
+  const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  const pageIds = [];
+
+  for (const pageCommands of pages) {
+    const stream = pageCommands.join("\n");
+    const contentId = addObject(`<< /Length ${Buffer.byteLength(stream, "utf8")} >>\nstream\n${stream}\nendstream`);
+    const pageId = addObject(
+      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
+        `/Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>`
+    );
+    pageIds.push(pageId);
+  }
+
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+
+  const chunks = ["%PDF-1.4\n"];
+  const offsets = [0];
+  for (let index = 0; index < objects.length; index += 1) {
+    offsets.push(Buffer.byteLength(chunks.join(""), "utf8"));
+    chunks.push(`${index + 1} 0 obj\n${objects[index]}\nendobj\n`);
+  }
+
+  const xrefOffset = Buffer.byteLength(chunks.join(""), "utf8");
+  chunks.push(`xref\n0 ${objects.length + 1}\n`);
+  chunks.push("0000000000 65535 f \n");
+  for (let index = 1; index < offsets.length; index += 1) {
+    chunks.push(`${String(offsets[index]).padStart(10, "0")} 00000 n \n`);
+  }
+  chunks.push(`trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+
+  return Buffer.from(chunks.join(""), "utf8");
 }
 
 const manifest = readJson(manifestPath, null);
@@ -46,7 +198,11 @@ const slitherReports = manifest.reports?.slither || [];
 const mythrilReports = manifest.reports?.mythril || [];
 const slitherDetectorCount = sum(slitherReports, (item) => item.detectorCount || 0);
 const mythrilIssueCount = sum(mythrilReports, (item) => item.issueCount || 0);
+const slitherImpacts = flattenCounts(slitherReports, "byImpact");
+const mythrilSeverities = flattenCounts(mythrilReports, "bySeverity");
+const verificationManifestCount = manifest.files?.verificationManifests?.length || 0;
 const sourceCount = manifest.files?.sources?.length || 0;
+const bundledCount = manifest.files?.bundledSources?.length || 0;
 const abiCount = manifest.files?.abis?.length || 0;
 const artifactCount = manifest.files?.hardhatArtifacts?.length || 0;
 const runUrl =
@@ -55,85 +211,116 @@ const runUrl =
     : null;
 
 const title = "QbitMarket Contracts Security Verification Summary";
-
+const generatedDate = new Date(manifest.generatedAt).toISOString().slice(0, 10);
 const lines = [
-  "## What This Summary Is",
-  "This document is a plain-language record of the security verification process run against the QbitMarket smart contracts at a specific public commit. It is intended for anyone — users, partners, integrators, or reviewers — who wants to understand what was checked, how it was checked, and how to confirm the results independently.",
+  "## Purpose",
+  "This shareable summary records the automated verification evidence generated for the public qbitmarket contracts repository. It is intended for users, partners, and reviewers who need a concise view of the security process without reading the full technical evidence bundle.",
   "",
-  "## Important: Not a Formal Audit",
-  "@notice",
-  "This is not a paid or formal third-party audit certificate. It documents an automated, reproducible verification process tied to a specific public commit. Automated tools cannot guarantee the absence of all vulnerabilities, but they do provide a traceable, repeatable baseline that anyone can re-run and check.",
+  "## Important Limitation",
+  "This is not a paid or formal third-party audit certificate. It summarizes automated static analysis, bounded symbolic analysis, regression tests, invariant-style tests, source hashing, and documented triage for a specific public commit.",
   "",
-  "## @identity Verification Identity",
-  `Generated: ${manifest.generatedAt}`,
-  `Public commit: ${manifest.commit || "unknown"}`,
+  "## Evidence Identity",
+  `Generated at: ${manifest.generatedAt}`,
+  `Public commit: ${shortHash(manifest.commit)} (${manifest.commit || "unknown"})`,
   `Git ref: ${manifest.ref || "unknown"}`,
   `Repository: ${manifest.repository || "unknown"}`,
-  runUrl ? `CI run (public): ${runUrl}` : "CI run: not available (local generation)",
-  "",
-  "## How the Process Works",
-  "Every time the public contracts repository is updated, a GitHub Actions workflow runs automatically. It compiles the contracts from source, executes the full test suite, and runs two independent security analysis tools. All results are attached to the exact commit that triggered the run.",
-  "The process is deterministic: given the same source code, the same tools will produce the same results. The source files are cryptographically hashed so you can confirm that what was analyzed matches what is in the repository. The CI run link above points to the public workflow log where every step is visible.",
-  "Known tool warnings that are intentional — for example, a pattern the marketplace must use to pay sellers — are documented with a human-written rationale and, where possible, a targeted regression test. Unrecognized warnings cause the workflow to fail.",
+  runUrl ? `GitHub Actions run: ${runUrl}` : "GitHub Actions run: unavailable in local generation",
   "",
   "## What Was Checked",
-  "- Slither static analysis: scans contract source code for common vulnerability patterns. Every finding is either fixed, covered by a regression test, or explicitly accepted with a written rationale.",
-  "- Mythril symbolic analysis: explores compiled bytecode paths to look for reachable issues. Zero issues were reported in the bounded profile.",
-  "- Release test suite: covers the full marketplace lifecycle including payment-token policy, reentrancy attempts, listing/offer/auction lifecycle edge cases, and invariant rules.",
-  "- Invariant checks: verify that key guarantees always hold — no funds get stuck in the contract, fee caps are enforced, payment-token policy is respected.",
-  "- Source and artifact hashing: every source file, compiled artifact, and ABI is hashed so results can be tied back to the exact code that was deployed.",
+  "- Release Hardhat test suite, including lifecycle, payment-token policy, reentrancy, invalidation, and invariant-style regression tests.",
+  "- Slither static-analysis baseline, with accepted findings documented and gated by policy.",
+  "- Mythril bounded symbolic-analysis baseline against compiled marketplace bytecode artifacts.",
+  "- Source, ABI, bundled source, and compiled artifact hashes for reproducibility.",
+  "- Deployment verification manifests when present in the evidence bundle.",
   "",
-  "## @results Verification Results",
-  `~pass Release test suite: all tests passing`,
-  manifest.reports?.slitherTriageGate
-    ? `~pass Slither static analysis: ${slitherDetectorCount} finding(s) — all triaged and documented, triage gate passed`
-    : `~fail Slither static analysis: triage gate failed — unrecognized findings present`,
-  mythrilIssueCount === 0
-    ? `~pass Mythril symbolic analysis: 0 issues found`
-    : `~fail Mythril symbolic analysis: ${mythrilIssueCount} issue(s) found — review required`,
-  `~pass Source integrity: ${sourceCount} source, ${abiCount} ABI, and ${artifactCount} compiled artifact files hashed`,
+  "## Automated Results",
+  `Slither reports: ${slitherReports.length}`,
+  `Slither detector results: ${slitherDetectorCount}`,
+  `Slither impacts: ${formatCounts(slitherImpacts)}`,
+  `Mythril reports: ${mythrilReports.length}`,
+  `Mythril issues: ${mythrilIssueCount}`,
+  `Mythril severities: ${formatCounts(mythrilSeverities)}`,
+  `Slither triage gate: ${manifest.reports?.slitherTriageGate ? "present" : "missing"}`,
   "",
-  "## About the Upgradeable Proxy",
-  "The primary marketplace contract uses an upgradeable proxy pattern, which is a standard Ethereum technique. It means that if a bug is found, the operator can deploy a fix without users needing to update their wallet approvals or move to a new address.",
-  "This upgradability is controlled by checks and balances to prevent abuse:",
-  "- Upgrade authority is held by a dedicated ProxyAdmin contract, not directly by a personal wallet. For significant deployments this must be a multisig (Safe) wallet requiring multiple approvers.",
-  "- Every upgrade emits a public on-chain event (Upgraded) that anyone can verify on a blockchain explorer. Upgrade history is reconstructable from these events.",
-  "- Marketplace configuration (fees, pause/unpause) and upgrade authority are deliberately separate roles so no single action can both change the logic and reconfigure the contract.",
-  "- The secondary marketplace contracts (ERC-721, ERC-1155) are not upgradeable — their logic is fixed at deployment.",
-  "- Operational authority, including who holds each role and how to observe changes, is documented in the operational-authority.md file in this evidence bundle.",
+  "## Reproducibility Evidence",
+  `Source and test files hashed: ${sourceCount}`,
+  `Bundled deployment source files hashed: ${bundledCount}`,
+  `ABI files hashed: ${abiCount}`,
+  `Compiled Hardhat artifacts hashed: ${artifactCount}`,
+  `Deployment verification manifests included: ${verificationManifestCount}`,
   "",
-  "## Supporting Files in This Evidence Bundle",
-  "- audit-evidence-manifest.json — machine-readable index of all evidence files, tool versions, source file hashes, and the CI run reference. The starting point for automated independent verification.",
-  "- audit-triage.md — human-written review of every tool warning: what was flagged, whether it is intentional behavior or a fixed issue, and which regression test covers it. Read this alongside the raw tool reports.",
-  "- invariant-tests.md — the behavioral rules that must always hold (for example: no ETH gets stuck in the contract after a trade), why each rule matters, and how the test suite checks each one.",
-  "- operational-authority.md — documents who controls what: upgrade authority, marketplace configuration, fee and payment-token policy, and how to observe any on-chain changes via public blockchain events.",
-  "- publication-model.md — explains the release process: how contracts move from internal development to public deployment, what gets published, and the chain of custody for deployed artifacts.",
-  "- slither-*.json and mythril-*.json — raw tool output including all findings, even accepted ones, for independent review.",
-  "",
-  "## How to Verify Independently",
-  "- Find the commit hash above in the public repository and confirm it matches the source files you want to review.",
-  "- Open the CI run link above to see the full public workflow log, including tool versions and every command that was run.",
-  "- Re-run the tools locally by following the commands in audit-triage.md using the same source checkout. The results should match those recorded in the manifest.",
-  "- Compare the source file hashes in audit-evidence-manifest.json against the files in the repository at that commit.",
-  "- Read audit-triage.md to understand why each tool warning was accepted rather than simply dismissed.",
+  "## Security Controls Covered",
+  "- Owner-only configuration and fee caps for privileged marketplace settings.",
+  "- Native and ERC-20 escrow conservation for offers and auctions.",
+  "- ERC-20 payment-token policy: native token support, factory-created tokens, and owner-approved external tokens.",
+  "- Reentrancy hardening for malicious ERC-20, ERC-721, and ERC-1155 callback attempts.",
+  "- Listing, offer, and auction lifecycle guards for cancelled, expired, reused, underpaid, overpaid, unapproved, and balance-lost states.",
+  "- Pause behavior for critical marketplace actions while keeping cancellation paths available.",
+  "- Upgradeability checks for the primary proxy and documented admin ownership procedures.",
   "",
   "## Known Boundaries",
-  "- Automated tools are not a mathematical proof and cannot guarantee the absence of all vulnerabilities.",
-  "- The Mythril profile is intentionally bounded for reproducibility; longer unconstrained symbolic runs may surface additional paths.",
-  "- Mainnet use with significant funds should add a stateful property-based test campaign (Foundry or Echidna) and fork testing with unusual ERC-20 tokens before launch.",
-  "- Accepted Slither findings are visible in the raw reports and explained in audit-triage.md — they are not hidden.",
+  "- Automated tooling is not a mathematical proof and cannot guarantee absence of vulnerabilities.",
+  "- Long-running Echidna or Foundry invariant campaigns are recommended before significant-funds mainnet usage.",
+  "- Mainnet-fork testing with unusual ERC-20s is still a future mainnet-readiness step.",
+  "- Accepted Slither findings remain visible in the evidence bundle and must be read with the triage document.",
+  "",
+  "## Supporting Files",
+  "- audit-evidence-manifest.json",
+  "- audit-evidence-summary.md",
+  "- audit-triage.md",
+  "- invariant-tests.md",
+  "- operational-authority.md",
+  "- publication-model.md",
+  "- slither and Mythril JSON reports",
 ];
 
-const pdfOptions = { generatedAt: manifest.generatedAt, commit: manifest.commit };
+const markdown = [
+  `# ${title}`,
+  "",
+  ...lines.map((line) => (line.startsWith("## ") || line.startsWith("- ") || line === "" ? line : `- ${line}`)),
+  "",
+].join("\n");
+
+const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #1f2933; margin: 48px; line-height: 1.45; }
+    h1 { font-size: 30px; margin-bottom: 8px; }
+    h2 { font-size: 18px; margin-top: 28px; border-bottom: 1px solid #d9e2ec; padding-bottom: 6px; }
+    p, li { font-size: 13px; }
+    .notice { background: #fff7e6; border: 1px solid #f5c26b; padding: 12px 14px; border-radius: 6px; }
+    .meta { color: #52606d; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <p class="meta">Generated at ${escapeHtml(manifest.generatedAt)} for commit ${escapeHtml(shortHash(manifest.commit))}</p>
+  ${lines
+    .map((line) => {
+      if (line === "") return "";
+      if (line.startsWith("## ")) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
+      if (line.startsWith("- ")) return `<p>&bull; ${escapeHtml(line.slice(2))}</p>`;
+      if (line === "This is not a paid or formal third-party audit certificate. It summarizes automated static analysis, bounded symbolic analysis, regression tests, invariant-style tests, source hashing, and documented triage for a specific public commit.") {
+        return `<p class="notice">${escapeHtml(line)}</p>`;
+      }
+      return `<p>${escapeHtml(line)}</p>`;
+    })
+    .join("\n")}
+</body>
+</html>
+`;
 
 fs.mkdirSync(outputDir, { recursive: true });
 const markdownPath = path.join(outputDir, `${baseName}.md`);
 const htmlPath = path.join(outputDir, `${baseName}.html`);
 const pdfPath = path.join(outputDir, `${baseName}.pdf`);
 
-fs.writeFileSync(markdownPath, renderMarkdown(title, lines));
-fs.writeFileSync(htmlPath, renderHtml(title, lines, pdfOptions));
-fs.writeFileSync(pdfPath, buildSimplePdf(title, lines, pdfOptions));
+fs.writeFileSync(markdownPath, markdown);
+fs.writeFileSync(htmlPath, html);
+fs.writeFileSync(pdfPath, buildSimplePdf(title, lines));
 
 console.log(`Wrote ${markdownPath}`);
 console.log(`Wrote ${htmlPath}`);

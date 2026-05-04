@@ -25,6 +25,16 @@ Secondary-market split rollout:
 | Legacy `MarketplaceV2` | legacy env/address book | Yes during mixed rollout | Existing secondary-market data until frontend/indexer migration is complete |
 | `PaymentTokenFactory` | deployment address book and env sync | Yes for token creation/discovery | Creates self-service ERC-20 payment tokens accepted by secondary marketplaces when the marketplace `paymentTokenFactory` is configured |
 
+Planned secondary-market proxy rollout:
+
+| Role | Address source | User-facing? | Purpose |
+| --- | --- | --- | --- |
+| `MarketplaceSecondaryERC721Proxy` | deployment address book and verification manifest | Yes | Stable ERC-721 secondary marketplace address for user calls and operator approvals |
+| `MarketplaceSecondaryERC721Implementation` | deployment address book and verification manifest | No | ERC-721 secondary marketplace logic contract; users must not approve or transact against it directly |
+| `MarketplaceSecondaryERC1155Proxy` | deployment address book and verification manifest | Yes | Stable ERC-1155 secondary marketplace address for user calls and operator approvals |
+| `MarketplaceSecondaryERC1155Implementation` | deployment address book and verification manifest | No | ERC-1155 secondary marketplace logic contract; users must not approve or transact against it directly |
+| Secondary `ProxyAdmin` | deployment address book and verification manifest | No | Upgrade authority for the secondary proxy stack; may be shared or standard-specific based on the release decision |
+
 ## Authority Boundaries
 
 - User-facing marketplace calls must use proxy/split marketplace addresses, not
@@ -33,6 +43,8 @@ Secondary-market split rollout:
   for the token standard:
   - ERC-721 secondary approvals target `MarketplaceSecondaryERC721`.
   - ERC-1155 secondary approvals target `MarketplaceSecondaryERC1155`.
+  - after secondary proxy rollout, approvals target the corresponding secondary
+    proxy address, never the implementation or proxy admin.
   - primary lazy-mint purchases do not require token operator approval.
 - Upgrade authority lives on `ProxyAdmin`, not on the proxy implementation ABI.
 - Marketplace config authority lives on `owner()` for the marketplace contract

@@ -4,10 +4,9 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-contract ERC721Collection is ERC721URIStorage, ERC2981, Ownable2Step, Pausable {
+contract ERC721Collection is ERC721URIStorage, Ownable2Step, Pausable {
     bytes32 public constant LEAF_TYPEHASH =
         keccak256(
             "LazyMintLeaf(uint256 chainId,address collection,uint256 rootVersion,uint256 tokenId,bytes32 uriHash,uint256 price)"
@@ -48,13 +47,8 @@ contract ERC721Collection is ERC721URIStorage, ERC2981, Ownable2Step, Pausable {
         marketplace = initialMarketplace_;
         _contractMetadataURI = contractURI_;
 
-        if (royaltyRecipient_ != address(0)) {
-            require(royaltyBps_ <= MAX_BPS, "ERC721Collection: royalty too high");
-            _setDefaultRoyalty(royaltyRecipient_, royaltyBps_);
-            emit DefaultRoyaltyUpdated(royaltyRecipient_, royaltyBps_);
-        } else {
-            require(royaltyBps_ == 0, "ERC721Collection: royalty recipient required");
-        }
+        royaltyRecipient_;
+        require(royaltyBps_ == 0, "ERC721Collection: royalties disabled");
 
         _transferOwnership(initialOwner_);
         emit MarketplaceUpdated(address(0), initialMarketplace_);
@@ -146,22 +140,19 @@ contract ERC721Collection is ERC721URIStorage, ERC2981, Ownable2Step, Pausable {
     }
 
     function setDefaultRoyalty(address recipient, uint96 feeNumerator) external onlyOwner {
-        require(recipient != address(0), "ERC721Collection: invalid royalty recipient");
-        require(feeNumerator <= MAX_BPS, "ERC721Collection: royalty too high");
-
-        _setDefaultRoyalty(recipient, feeNumerator);
-        emit DefaultRoyaltyUpdated(recipient, feeNumerator);
+        recipient;
+        require(feeNumerator == 0, "ERC721Collection: royalties disabled");
+        emit DefaultRoyaltyUpdated(address(0), 0);
     }
 
     function clearDefaultRoyalty() external onlyOwner {
-        _deleteDefaultRoyalty();
         emit DefaultRoyaltyCleared();
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721URIStorage, ERC2981)
+        override(ERC721URIStorage)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
