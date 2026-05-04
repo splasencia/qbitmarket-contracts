@@ -250,7 +250,7 @@ const lines = [
   `Deployment verification manifests included: ${verificationManifestCount}`,
   "",
   "## Security Controls Covered",
-  "- Owner-only configuration and fee caps for privileged marketplace settings.",
+  "- Owner-only configuration and disabled-fee enforcement for privileged marketplace settings.",
   "- Native and ERC-20 escrow conservation for offers and auctions.",
   "- ERC-20 payment-token policy: native token support, factory-created tokens, and owner-approved external tokens.",
   "- Reentrancy hardening for malicious ERC-20, ERC-721, and ERC-1155 callback attempts.",
