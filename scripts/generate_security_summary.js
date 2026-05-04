@@ -332,7 +332,6 @@ const slitherDetectorCount = sum(slitherReports, (item) => item.detectorCount ||
 const mythrilIssueCount = sum(mythrilReports, (item) => item.issueCount || 0);
 const slitherImpacts = flattenCounts(slitherReports, "byImpact");
 const mythrilSeverities = flattenCounts(mythrilReports, "bySeverity");
-const verificationManifestCount = manifest.files?.verificationManifests?.length || 0;
 const sourceCount = manifest.files?.sources?.length || 0;
 const bundledCount = manifest.files?.bundledSources?.length || 0;
 const abiCount = manifest.files?.abis?.length || 0;
@@ -381,9 +380,6 @@ const lines = [
     ? `~pass Mythril symbolic analysis: 0 issues found`
     : `~fail Mythril symbolic analysis: ${mythrilIssueCount} issue(s) found — review required`,
   `~pass Source integrity: ${sourceCount} source, ${abiCount} ABI, and ${artifactCount} compiled artifact files hashed`,
-  verificationManifestCount > 0
-    ? `~pass Deployment verification manifest: ${verificationManifestCount} manifest(s) included`
-    : `~pass Deployment verification manifest: not included (pre-deployment audit run)`,
   "",
   "## About the Upgradeable Proxy",
   "The primary marketplace contract uses an upgradeable proxy pattern, which is a standard Ethereum technique. It means that if a bug is found, the operator can deploy a fix without users needing to update their wallet approvals or move to a new address.",
