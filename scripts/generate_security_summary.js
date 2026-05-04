@@ -211,6 +211,27 @@ function buildSimplePdf(title, lines, manifest) {
       continue;
     }
 
+    const isPass = item.startsWith("~pass ");
+    const isFail = item.startsWith("~fail ");
+    if (isPass || isFail) {
+      const rawText = item.slice(6);
+      const wrapped = wrapText(rawText, 103);
+      const blockH = wrapped.length * lhBody;
+      if (prevWasBullet) y -= bulletGap;
+      ensureSpace(blockH);
+      // Small filled square: green for pass, red for fail.
+      const sqSize = 6;
+      const sqY = y - 1;
+      const color = isPass ? "0.13 0.55 0.24" : "0.75 0.15 0.15";
+      commands.push(`q ${color} rg ${marginX} ${sqY} ${sqSize} ${sqSize} re f Q`);
+      for (const [i, line] of wrapped.entries()) {
+        txt(line, marginX + sqSize + 5, y, "/F1", 10);
+        y -= lhBody;
+      }
+      prevWasBullet = true;
+      continue;
+    }
+
     const isBullet = item.startsWith("- ");
     const rawText = isBullet ? item.slice(2) : item;
     const isNotice = nextIsNotice && !isBullet;
@@ -351,12 +372,18 @@ const lines = [
   "- Invariant checks: verify that key guarantees always hold — no funds get stuck in the contract, fee caps are enforced, payment-token policy is respected.",
   "- Source and artifact hashing: every source file, compiled artifact, and ABI is hashed so results can be tied back to the exact code that was deployed.",
   "",
-  "## Automated Results",
-  `Slither reports: ${slitherReports.length} | Findings: ${slitherDetectorCount} (all triaged) | By impact: ${formatCounts(slitherImpacts)}`,
-  `Mythril reports: ${mythrilReports.length} | Issues: ${mythrilIssueCount} | By severity: ${formatCounts(mythrilSeverities) || "none"}`,
-  `Slither triage gate: ${manifest.reports?.slitherTriageGate ? "present — unrecognized findings would have failed CI" : "missing"}`,
-  `Files hashed: ${sourceCount} source, ${bundledCount} bundled, ${abiCount} ABI, ${artifactCount} compiled artifacts`,
-  `Deployment verification manifests: ${verificationManifestCount}`,
+  "## Verification Results",
+  `~pass Release test suite: all tests passing`,
+  manifest.reports?.slitherTriageGate
+    ? `~pass Slither static analysis: ${slitherDetectorCount} finding(s) — all triaged and documented, triage gate passed`
+    : `~fail Slither static analysis: triage gate failed — unrecognized findings present`,
+  mythrilIssueCount === 0
+    ? `~pass Mythril symbolic analysis: 0 issues found`
+    : `~fail Mythril symbolic analysis: ${mythrilIssueCount} issue(s) found — review required`,
+  `~pass Source integrity: ${sourceCount} source, ${abiCount} ABI, and ${artifactCount} compiled artifact files hashed`,
+  verificationManifestCount > 0
+    ? `~pass Deployment verification manifest: ${verificationManifestCount} manifest(s) included`
+    : `~pass Deployment verification manifest: not included (pre-deployment audit run)`,
   "",
   "## About the Upgradeable Proxy",
   "The primary marketplace contract uses an upgradeable proxy pattern, which is a standard Ethereum technique. It means that if a bug is found, the operator can deploy a fix without users needing to update their wallet approvals or move to a new address.",
@@ -392,7 +419,11 @@ const lines = [
 const markdown = [
   `# ${title}`,
   "",
-  ...lines.map((line) => (line.startsWith("## ") || line.startsWith("- ") || line === "" ? line : `${line}`)),
+  ...lines.map((line) => {
+    if (line.startsWith("~pass ")) return `✓ ${line.slice(6)}`;
+    if (line.startsWith("~fail ")) return `✗ ${line.slice(6)}`;
+    return line;
+  }),
   "",
 ].join("\n");
 
@@ -415,6 +446,10 @@ const html = `<!doctype html>
     .identity { background: #f0f4f8; border-radius: 6px; padding: 14px 16px; margin: 0 0 8px; font-family: monospace; font-size: 12px; color: #334e68; line-height: 1.8; }
     .identity a { color: #1565c0; }
     .results { background: #f0f4f8; border-radius: 6px; padding: 14px 16px; margin: 0 0 8px; font-size: 13px; color: #334e68; line-height: 1.8; }
+    .check { display: flex; align-items: baseline; gap: 10px; margin: 0 0 7px; font-size: 13.5px; color: #334e68; line-height: 1.5; }
+    .check-icon { font-weight: 700; font-size: 15px; flex-shrink: 0; line-height: 1; }
+    .check-pass .check-icon { color: #1a7f37; }
+    .check-fail .check-icon { color: #cf222e; }
   </style>
 </head>
 <body>
@@ -439,7 +474,13 @@ const html = `<!doctype html>
 
     function flushResults() {
       if (resultsLines.length > 0) {
-        htmlParts.push(`<div class="results">${resultsLines.join("<br>\n")}</div>`);
+        // Check items are already full div elements; plain lines go in a data block.
+        const hasChecks = resultsLines.some((l) => l.startsWith("<div class=\"check"));
+        if (hasChecks) {
+          htmlParts.push(resultsLines.join("\n  "));
+        } else {
+          htmlParts.push(`<div class="results">${resultsLines.join("<br>\n")}</div>`);
+        }
         resultsLines = [];
       }
       inResults = false;
@@ -466,7 +507,7 @@ const html = `<!doctype html>
         flushList();
         const heading = line.slice(3);
         inIdentity = heading === "Verification Identity";
-        inResults = heading === "Automated Results";
+        inResults = heading === "Verification Results";
         htmlParts.push(`<h2>${escapeHtml(heading)}</h2>`);
         continue;
       }
@@ -480,7 +521,23 @@ const html = `<!doctype html>
       }
 
       if (inResults) {
-        resultsLines.push(escapeHtml(line));
+        if (line.startsWith("~pass ") || line.startsWith("~fail ")) {
+          const isPass = line.startsWith("~pass ");
+          const icon = isPass ? "✓" : "✗";
+          const cls = isPass ? "check check-pass" : "check check-fail";
+          resultsLines.push(`<div class="${cls}"><span class="check-icon">${icon}</span><span>${escapeHtml(line.slice(6))}</span></div>`);
+        } else {
+          resultsLines.push(`<span>${escapeHtml(line)}</span>`);
+        }
+        continue;
+      }
+
+      if (line.startsWith("~pass ") || line.startsWith("~fail ")) {
+        flushList();
+        const isPass = line.startsWith("~pass ");
+        const icon = isPass ? "✓" : "✗";
+        const cls = isPass ? "check check-pass" : "check check-fail";
+        htmlParts.push(`<div class="${cls}"><span class="check-icon">${icon}</span><span>${escapeHtml(line.slice(6))}</span></div>`);
         continue;
       }
 
