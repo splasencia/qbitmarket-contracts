@@ -51,13 +51,14 @@ Planned secondary-market proxy rollout:
   reached through the proxy.
 - Collection migration authority remains collection-local: each ERC-721
   collection owner can call `setMarketplace(...)`.
-- Mainnet-like deployments should use a Safe or equivalent admin contract as
-  the default owner by setting `SAFE_OWNER_ADDRESS` and
-  `REQUIRE_CONTRACT_OWNER_CODE=true`. A solo admin may start with a 1-of-1 or
-  1-of-2 Safe for key rotation/recovery, while significant-funds mainnet should
-  move to 2-of-3 or stronger. Role-specific owner variables should only
-  override that default when a role intentionally has a different Safe/admin
-  contract.
+- Current QANPlatform testnet deployments may use a single operator owner for
+  iteration speed because qbitmarket does not support real-value assets or
+  charge fees. Safe/multisig ownership is optional for this non-commercial
+  testnet deployment.
+- If qbitmarket ever moves beyond a non-commercial testnet playground toward a
+  mainnet or real-value environment, owner addresses should move to a Safe or
+  equivalent admin contract before launch. For significant funds, use a real
+  multi-signer threshold such as 2-of-3 or stronger.
 - Secondary payment-token policy is hybrid:
   - native-token payments require no allowlist
   - ERC-20s created by the trusted `PaymentTokenFactory` are accepted
@@ -65,12 +66,11 @@ Planned secondary-market proxy rollout:
   - external ERC-20s require owner allowlisting on every active secondary
     marketplace before users should list, bid, or buy with them
 
-## Safe Operations
+## Owner/Admin Operations
 
-R8 Safe/admin-contract ownership is the required governance model for the
-first public rollout. R7 timelock is intentionally deferred until before
-mainnet with significant funds, so Safe operations must carry the review and
-recordkeeping discipline that timelock would later enforce mechanically.
+For the current non-commercial QANPlatform testnet deployment, sensitive
+owner/admin actions can be executed by the configured operator owner. Use this
+checklist for review and recordkeeping even when the owner is a single EOA.
 
 Use this checklist for every sensitive owner/admin action:
 
@@ -83,7 +83,7 @@ Use this checklist for every sensitive owner/admin action:
      wiring changes.
    - Routine: metadata-only publication, verification manifest publication, or
      read-only operational checks.
-2. Write the intent before proposing the Safe transaction.
+2. Write the intent before signing or proposing the transaction.
    - Contract name and address.
    - Function and arguments.
    - Expected on-chain state before execution.
@@ -97,17 +97,20 @@ Use this checklist for every sensitive owner/admin action:
    - For ERC-20 operations, confirm whether the token is factory-created,
      verified external, or untrusted external.
 4. Simulate or dry-run when available.
-   - Prefer Safe transaction simulation or a fork/local dry-run for critical
-     and high operations.
+   - Prefer a fork/local dry-run for critical and high operations.
+   - If using a Safe/admin contract, use Safe transaction simulation where
+     available.
    - If simulation is unavailable, perform a read-only precheck and document
      why simulation was skipped.
-5. Collect Safe approval.
-   - For 1-of-1 or 1-of-2 solo-admin Safe setups, review the calldata from a
-     clean device/session before signing.
-   - For thresholds greater than 1, a second signer should independently check
-     the target address, function, arguments, and expected impact.
+5. Approve/sign.
+   - For the current testnet operator-owner setup, review calldata from a clean
+     device/session before signing.
+   - If using a Safe/admin contract, collect the configured approvals. For
+     thresholds greater than 1, a second signer should independently check the
+     target address, function, arguments, and expected impact.
 6. Execute and verify.
-   - Save the Safe transaction hash and final execution transaction hash.
+   - Save the execution transaction hash. If using a Safe, also save the Safe
+     transaction hash.
    - Read the changed on-chain value after execution.
    - Confirm the value matches the expected post-state.
    - For deployment operations, confirm the verification manifest records the
@@ -123,38 +126,38 @@ Sensitive-operation quick reference:
 
 | Operation | Contract(s) | Required checks |
 | --- | --- | --- |
-| Change platform fee | Marketplace contracts | New bps <= `MAX_PLATFORM_FEE_BPS`; UI/admin copy reflects the new fee |
-| Change fee recipient | Marketplace contracts | New recipient is expected treasury/Safe-controlled account |
+| Change platform fee | Marketplace contracts | Current contracts require fee bps `0`; non-zero values should fail |
+| Change fee recipient | Marketplace contracts | New recipient is expected operator-controlled account; if future real-value deployment, prefer Safe/admin controlled |
 | Set payment-token factory | Secondary marketplaces | Factory address is trusted, deployed, and matches frontend/indexer env |
 | Allowlist external ERC-20 | Secondary marketplaces | Token reviewed as external/verified; allowlist applied to every active secondary marketplace |
-| Set site-native token | Secondary marketplaces | Token is factory-created or already allowlisted; fee bps reviewed |
+| Set site-native token | Secondary marketplaces | Token is factory-created or already allowlisted; site-native fee remains `0` |
 | Upgrade primary proxy | `ProxyAdmin` | Implementation verified; storage layout reviewed; proxy target and initializer calldata checked |
-| Transfer ownership | Ownable/ProxyAdmin contracts | New owner is Safe/admin contract; `acceptOwnership()` completed for Ownable2Step |
+| Transfer ownership | Ownable/ProxyAdmin contracts | New owner is the intended operator owner; for future real-value deployment prefer Safe/admin contract; `acceptOwnership()` completed for Ownable2Step |
 | Pause/unpause | Marketplace/collection contracts | Scope and user impact documented; post-state verified |
 
 ## Fee Operations
 
-Secondary marketplace fees intentionally support two tiers:
+The current qbitmarket contracts are configured as a non-commercial testnet
+demo. Marketplace fees and site-native fee incentives are disabled:
 
-- Standard fee: `platformFeeBps`, used for native payments and regular
-  supported ERC-20 payment tokens.
-- Site-native discount fee: `siteNativePaymentTokenFeeBps`, used only when the
-  payment token equals the configured `siteNativePaymentToken`.
+- Standard fee: `platformFeeBps` must be `0`.
+- Site-native fee: `siteNativePaymentTokenFeeBps` must be `0`.
 
-This discount is a product incentive, not a hidden fallback path. Before
-configuring or changing it:
+The site-native token may still be configured for payment-token testing, but it
+must not create a commercial fee discount or revenue incentive. Before changing
+site-native token configuration:
 
 1. Confirm the site-native token address is factory-created or already
    allowlisted as an approved external ERC-20.
-2. Confirm `siteNativePaymentTokenFeeBps <= platformFeeBps`.
+2. Confirm `platformFeeBps == 0` and `siteNativePaymentTokenFeeBps == 0` on the
+   active secondary marketplaces.
 3. Confirm the frontend env sync includes:
    - `NEXT_PUBLIC_SITE_NATIVE_PAYMENT_TOKEN_ADDRESS`
-   - `NEXT_PUBLIC_SITE_NATIVE_PAYMENT_TOKEN_FEE_BPS`
+   - `NEXT_PUBLIC_SITE_NATIVE_PAYMENT_TOKEN_FEE_BPS=0`
    - optional symbol/logo keys when available
-4. Confirm Help and action forms describe the site token as receiving a reduced
-   marketplace fee.
-5. Record the Safe transaction, post-change fee reads, and env/updateEnv run in
-   the release notes or operational change log.
+4. Confirm Help and action forms describe fees as disabled.
+5. Record the transaction, post-change fee reads, and env/updateEnv run in the
+   release notes or operational change log.
 
 ## Payment Token Operations
 
@@ -167,7 +170,7 @@ Secondary marketplaces distinguish three payment-token sources:
 | External/official ERC-20 | Not native and not registered by the trusted factory | Verified/official only after review | Allowlist on each active secondary marketplace and update the curated UI token list |
 
 Use this runbook before promoting an external ERC-20 to verified/official
-status or using it as the site-native fee-discount token.
+status or using it as the site-native test token.
 
 1. Verify the token contract address on the target chain.
    - Confirm the address is a contract.
@@ -195,7 +198,8 @@ status or using it as the site-native fee-discount token.
    - For deployments, seed the same addresses through
      `MARKETPLACE_V2_ALLOWED_PAYMENT_TOKENS` so newly deployed secondary
      marketplaces start with the intended external-token policy.
-5. Configure site-native fee-discount token only after acceptance.
+5. Configure the site-native test token only after acceptance, keeping the
+   site-native fee at `0`.
    - If the site-native token is factory-created, configure
      `paymentTokenFactory` first.
    - If the site-native token is external, allowlist it first.

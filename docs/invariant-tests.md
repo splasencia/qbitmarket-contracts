@@ -50,9 +50,9 @@ npx hardhat test
 | Factory ERC-20s are accepted without per-token allowlisting | User-created payment tokens should work permissionlessly when created by the trusted factory | Factory-created token matrix creates offers while `allowedPaymentTokens(token) == false` |
 | External ERC-20s are blocked until allowlisted | Arbitrary ERC-20s should not be accepted silently | External ERC-20 offer creation reverts before allowlisting and succeeds after owner allowlisting |
 | ERC-20 offer escrow clears on cancellation and settlement | Escrowed ERC-20s should not remain trapped after normal lifecycle exits | Factory-created ERC-20 offers assert marketplace token balance returns to zero after cancellation and acceptance |
-| Primary platform fee is capped | Primary marketplace owner cannot configure a platform fee above the documented cap | Fuzzed bps values accept `0..1000` and reject values above `MAX_PLATFORM_FEE_BPS` |
-| Secondary platform fee is capped | Secondary marketplace owner cannot configure a standard fee above the documented cap | Fuzzed bps values accept `0..1000` and reject values above `MAX_PLATFORM_FEE_BPS` |
-| Site-native discount fee cannot exceed standard fee | The product discount must remain a discount, not a hidden surcharge | Secondary fee matrix rejects standard fee below the site-native fee and rejects site-native fee above the standard fee |
+| Primary platform fee is disabled | Primary marketplace owner cannot configure a non-zero platform fee for the testnet deployment | Fuzzed bps values accept `0` and reject non-zero values |
+| Secondary platform fee is disabled | Secondary marketplace owner cannot configure a non-zero standard fee for the testnet deployment | Fuzzed bps values accept `0` and reject non-zero values |
+| Site-native fee incentive is disabled | Site-native token configuration must not create a commercial discount or revenue incentive | Secondary fee matrix accepts `0` and rejects non-zero site-native fee values |
 
 ## Coverage Shape
 
@@ -100,14 +100,15 @@ coverage over all possible call sequences. Known boundaries:
   sequences
 - no Foundry or Echidna stateful property runner yet
 - no formal storage-layout proof for future upgrades
-- no mainnet-fork behavior for unusual ERC-20s such as fee-on-transfer,
+- no forked-network behavior for unusual ERC-20s such as fee-on-transfer,
   rebasing, blacklistable, or pausable tokens
 
-## Recommended Next Level Before Mainnet
+## Recommended Next Level Before Any Real-Value Deployment
 
-Before a mainnet release with significant funds, add a dedicated property-based
-runner. The most useful next step is Foundry invariant testing or Echidna,
-focused on:
+The current scope is a non-commercial QANPlatform testnet playground. Before any
+future deployment that supports real economic value, add a dedicated
+property-based runner. The most useful next step is Foundry invariant testing or
+Echidna, focused on:
 
 - escrow conservation across arbitrary sequences of create, cancel, buy,
   accept, bid, outbid, settle, pause, and expiry operations

@@ -200,9 +200,8 @@ Coverage:
 - ERC-20 payment-token policy for factory-created, external, and allowlisted
   tokens
 - ERC-20 offer escrow clearing on cancellation and acceptance
-- primary and secondary platform-fee caps
-- site-native discount fee remaining less than or equal to the standard
-  secondary platform fee
+- primary and secondary platform fees remaining disabled
+- site-native fee incentives remaining disabled
 
 The invariant rules and current boundaries are documented in
 `docs/invariant-tests.md`.
