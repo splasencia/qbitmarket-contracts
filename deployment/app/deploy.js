@@ -118,6 +118,25 @@ function parseBooleanEnv(value, defaultValue = false) {
   throw new Error(`Invalid boolean env value: ${value}`);
 }
 
+class DeploymentNonceManager {
+  constructor(wallet) {
+    this.wallet = wallet;
+    this.nextNonce = null;
+  }
+
+  async txOverrides(overrides = {}) {
+    if (this.nextNonce === null) {
+      this.nextNonce = await this.wallet.provider.getTransactionCount(this.wallet.address, "pending");
+      console.log(`Starting deployment nonce: ${this.nextNonce}`);
+    }
+
+    return {
+      ...overrides,
+      nonce: this.nextNonce++,
+    };
+  }
+}
+
 function parseCollectionFactoryMarketplaceMode(rawValue) {
   const normalized = String(rawValue || "legacy").trim().toLowerCase();
   if (normalized === "legacy" || normalized === "primary_proxy") {
@@ -290,7 +309,7 @@ function compileContracts(contractsPath, contractFiles) {
 }
 
 
-async function deployContract(wallet, contractName, contractData, constructorArgs) {
+async function deployContract(wallet, nonceManager, contractName, contractData, constructorArgs) {
 
   // Contract deployment
   console.log("Deploying contract...");
@@ -313,11 +332,11 @@ async function deployContract(wallet, contractName, contractData, constructorArg
     const maxPriorityFeePerGas = ethers.utils.parseUnits('2', 'gwei');
     const maxFeePerGas = ethers.utils.parseUnits('50', 'gwei');
 
-    const contract = await factory.deploy(...constructorArgs, {
+    const contract = await factory.deploy(...constructorArgs, await nonceManager.txOverrides({
       gasLimit,
       maxPriorityFeePerGas,
       maxFeePerGas,
-    });
+    }));
     await contract.deployed();
     const deploymentReceipt = await contract.deployTransaction.wait();
     const deployBlockNumber = deploymentReceipt.blockNumber;
@@ -556,6 +575,7 @@ function upsertVerificationManifestEntry(manifest, deploymentAlias, entry) {
 
 async function deploySecondaryMarketplace({
   wallet,
+  nonceManager,
   compiledContracts,
   verificationManifest,
   deploymentAlias,
@@ -576,7 +596,7 @@ async function deploySecondaryMarketplace({
   }
 
   const constructorArgs = [owner, feeRecipient, feeBps];
-  const deployedContract = await deployContract(wallet, deploymentAlias, contractData, constructorArgs);
+  const deployedContract = await deployContract(wallet, nonceManager, deploymentAlias, contractData, constructorArgs);
   const deployedAddress = deployedContract.address;
 
   upsertVerificationManifestEntry(verificationManifest, deploymentAlias, {
@@ -598,7 +618,10 @@ async function deploySecondaryMarketplace({
     const postDeployConfiguration = {};
 
     if (hasPaymentTokenFactoryAddress) {
-      const tx = await secondaryMarketplaceContract.setPaymentTokenFactory(paymentTokenFactoryAddress);
+      const tx = await secondaryMarketplaceContract.setPaymentTokenFactory(
+        paymentTokenFactoryAddress,
+        await nonceManager.txOverrides()
+      );
       await tx.wait();
       console.log(`Configured ${deploymentAlias} payment-token factory: factory=${paymentTokenFactoryAddress}`);
       postDeployConfiguration.paymentTokenFactoryAddress = paymentTokenFactoryAddress;
@@ -606,7 +629,11 @@ async function deploySecondaryMarketplace({
 
     if (hasAllowedPaymentTokens) {
       for (const allowedPaymentToken of allowedPaymentTokens) {
-        const tx = await secondaryMarketplaceContract.setPaymentTokenAllowed(allowedPaymentToken, true);
+        const tx = await secondaryMarketplaceContract.setPaymentTokenAllowed(
+          allowedPaymentToken,
+          true,
+          await nonceManager.txOverrides()
+        );
         await tx.wait();
         console.log(`Allowed ${deploymentAlias} external payment token: token=${allowedPaymentToken}`);
       }
@@ -616,18 +643,25 @@ async function deploySecondaryMarketplace({
     if (hasSiteNativeTokenAddress && hasSiteNativeTokenFeeBps) {
       const tx = await secondaryMarketplaceContract.setSiteNativePaymentTokenConfig(
         siteNativeTokenAddress,
-        siteNativeTokenFeeBps
+        siteNativeTokenFeeBps,
+        await nonceManager.txOverrides()
       );
       await tx.wait();
       console.log(
         `Configured ${deploymentAlias} site-native token and fee: token=${siteNativeTokenAddress}, feeBps=${siteNativeTokenFeeBps}`
       );
     } else if (hasSiteNativeTokenAddress) {
-      const tx = await secondaryMarketplaceContract.setSiteNativePaymentToken(siteNativeTokenAddress);
+      const tx = await secondaryMarketplaceContract.setSiteNativePaymentToken(
+        siteNativeTokenAddress,
+        await nonceManager.txOverrides()
+      );
       await tx.wait();
       console.log(`Configured ${deploymentAlias} site-native token: token=${siteNativeTokenAddress}`);
     } else if (hasSiteNativeTokenFeeBps) {
-      const tx = await secondaryMarketplaceContract.setSiteNativePaymentTokenFeeBps(siteNativeTokenFeeBps);
+      const tx = await secondaryMarketplaceContract.setSiteNativePaymentTokenFeeBps(
+        siteNativeTokenFeeBps,
+        await nonceManager.txOverrides()
+      );
       await tx.wait();
       console.log(`Configured ${deploymentAlias} site-native token fee: feeBps=${siteNativeTokenFeeBps}`);
     }
@@ -648,6 +682,7 @@ async function deploySecondaryMarketplace({
 
 async function deployPaymentTokenFactory({
   wallet,
+  nonceManager,
   compiledContracts,
   verificationManifest,
   owner,
@@ -659,7 +694,13 @@ async function deployPaymentTokenFactory({
 
   const constructorArgs = [owner];
 
-  const deployedPaymentTokenFactory = await deployContract(wallet, "PaymentTokenFactory", contractData, constructorArgs);
+  const deployedPaymentTokenFactory = await deployContract(
+    wallet,
+    nonceManager,
+    "PaymentTokenFactory",
+    contractData,
+    constructorArgs
+  );
   upsertVerificationManifestEntry(verificationManifest, "PaymentTokenFactory", {
     address: deployedPaymentTokenFactory.address,
     deployBlockNumber: deployedPaymentTokenFactory.deployBlockNumber,
@@ -856,6 +897,7 @@ async function main() {
   if (wallet.address.toLowerCase() !== fallbackOwner.toLowerCase()) {
     console.warn(`Warning: DEPLOYER_ADDRESS (${fallbackOwner}) does not match wallet address (${wallet.address}).`);
   }
+  const nonceManager = new DeploymentNonceManager(wallet);
 
   // Find Solidity files in the contracts directory
 
@@ -909,7 +951,7 @@ async function main() {
       primaryMarketplaceFeeBps,
     ];
 
-    const deployedMarketplace = await deployContract(wallet, "Marketplace", contractData, constructorArgs);
+    const deployedMarketplace = await deployContract(wallet, nonceManager, "Marketplace", contractData, constructorArgs);
     marketplaceAddress = deployedMarketplace.address;
     upsertVerificationManifestEntry(verificationManifest, "Marketplace", {
       address: deployedMarketplace.address,
@@ -923,6 +965,7 @@ async function main() {
   if (deploymentTargets.includes("PaymentTokenFactory")) {
     paymentTokenFactoryAddress = await deployPaymentTokenFactory({
       wallet,
+      nonceManager,
       compiledContracts,
       verificationManifest,
       owner: paymentTokenFactoryOwner,
@@ -947,6 +990,7 @@ async function main() {
     await deploySecondaryMarketplace(
       {
         wallet,
+        nonceManager,
         compiledContracts,
         verificationManifest,
         deploymentAlias: "MarketplaceV2",
@@ -968,6 +1012,7 @@ async function main() {
     await deploySecondaryMarketplace(
       {
         wallet,
+        nonceManager,
         compiledContracts,
         verificationManifest,
         deploymentAlias: "MarketplaceSecondaryERC721",
@@ -989,6 +1034,7 @@ async function main() {
     await deploySecondaryMarketplace(
       {
         wallet,
+        nonceManager,
         compiledContracts,
         verificationManifest,
         deploymentAlias: "MarketplaceSecondaryERC1155",
@@ -1025,6 +1071,7 @@ async function main() {
 
     const deployedImplementation = await deployContract(
       wallet,
+      nonceManager,
       "MarketplacePrimaryImplementation",
       implementationContractData,
       []
@@ -1045,6 +1092,7 @@ async function main() {
     const proxyAdminConstructorArgs = [];
     const deployedProxyAdmin = await deployContract(
       wallet,
+      nonceManager,
       "MarketplacePrimaryProxyAdmin",
       proxyAdminContractData,
       proxyAdminConstructorArgs
@@ -1053,7 +1101,10 @@ async function main() {
     let proxyAdminOwnershipTransfer = null;
     if (marketplacePrimaryProxyAdminOwner.toLowerCase() !== wallet.address.toLowerCase()) {
       const proxyAdminContract = new ethers.Contract(proxyAdminAddress, proxyAdminContractData.abi, wallet);
-      const transferOwnershipTx = await proxyAdminContract.transferOwnership(marketplacePrimaryProxyAdminOwner);
+      const transferOwnershipTx = await proxyAdminContract.transferOwnership(
+        marketplacePrimaryProxyAdminOwner,
+        await nonceManager.txOverrides()
+      );
       const transferOwnershipReceipt = await transferOwnershipTx.wait();
       proxyAdminOwnershipTransfer = {
         owner: marketplacePrimaryProxyAdminOwner,
@@ -1087,6 +1138,7 @@ async function main() {
 
     const deployedProxy = await deployContract(
       wallet,
+      nonceManager,
       "MarketplacePrimaryProxy",
       proxyContractData,
       proxyConstructorArgs
@@ -1125,6 +1177,7 @@ async function main() {
 
     const deployedERC721CollectionDeployer = await deployContract(
       wallet,
+      nonceManager,
       "ERC721CollectionDeployer",
       contractData,
       []
@@ -1147,6 +1200,7 @@ async function main() {
 
     const deployedERC1155CollectionDeployer = await deployContract(
       wallet,
+      nonceManager,
       "ERC1155CollectionDeployer",
       contractData,
       []
@@ -1183,7 +1237,13 @@ async function main() {
       resolvedERC1155CollectionDeployerAddress,
     ];
 
-    const deployedCollectionFactory = await deployContract(wallet, "CollectionFactory", contractData, constructorArgs);
+    const deployedCollectionFactory = await deployContract(
+      wallet,
+      nonceManager,
+      "CollectionFactory",
+      contractData,
+      constructorArgs
+    );
     const collectionFactoryAddress = deployedCollectionFactory.address;
     upsertVerificationManifestEntry(verificationManifest, "CollectionFactory", {
       address: collectionFactoryAddress,
@@ -1213,7 +1273,10 @@ async function main() {
         erc721DeployerContractData.abi,
         wallet
       );
-      const tx721 = await erc721DeployerContract.initFactory(collectionFactoryAddress);
+      const tx721 = await erc721DeployerContract.initFactory(
+        collectionFactoryAddress,
+        await nonceManager.txOverrides()
+      );
       await tx721.wait();
       console.log(`ERC721CollectionDeployer.initFactory(${collectionFactoryAddress}) confirmed.`);
     } else {
@@ -1225,7 +1288,10 @@ async function main() {
         erc1155DeployerContractData.abi,
         wallet
       );
-      const tx1155 = await erc1155DeployerContract.initFactory(collectionFactoryAddress);
+      const tx1155 = await erc1155DeployerContract.initFactory(
+        collectionFactoryAddress,
+        await nonceManager.txOverrides()
+      );
       await tx1155.wait();
       console.log(`ERC1155CollectionDeployer.initFactory(${collectionFactoryAddress}) confirmed.`);
     } else {

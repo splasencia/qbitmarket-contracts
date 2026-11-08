@@ -1,7 +1,7 @@
 ARG SOLC_VER=0.8.28
 FROM ethereum/solc:${SOLC_VER}-alpine AS solc
 
-FROM alpine:3.20.3
+FROM node:24.22.1-alpine3.24@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
 
 COPY --from=solc /usr/local/bin/solc /usr/local/bin/solc
 
@@ -9,14 +9,9 @@ COPY app /app
 COPY scripts /app/scripts
 WORKDIR /app
 
-RUN apk add --no-cache nodejs-lts npm python3 make g++ bash python3 py3-pip && \
-    npm i -g npm && \
-    npm install && \
-    apk del npm make g++ && \
+RUN apk add --no-cache python3 bash py3-pip && \
+    npm ci --ignore-scripts --no-audit --no-fund && \
     ln -s /contracts /app/contracts
-
-# Install OpenZeppelin Contracts and other project dependencies
-RUN npm install @openzeppelin/contracts @openzeppelin/contracts-upgradeable
 
 # Make the vendored bundling scripts executable
 RUN chmod +x /app/scripts/bundle_contracts.sh
